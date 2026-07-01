@@ -1,0 +1,32 @@
+tools:
+  - name: create_quote_lead
+    description: Crear un lead de presupuesto de mudanza.
+    risk_level: medium
+    required_confirmation: true
+    required_flags:
+      - crm_write_enabled
+    allowed_channels:
+      - whatsapp
+      - webchat
+      - voice
+    handler: backend_client_adapter
+  - name: handoff_to_human
+    description: Derivar a una persona del equipo.
+    risk_level: low
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - webchat
+      - voice
+    handler: builtin
+  - name: register_timeline_event
+    description: Registrar un evento de conversacion.
+    risk_level: low
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - webchat
+      - voice
+    handler: builtin

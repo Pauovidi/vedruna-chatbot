@@ -1,0 +1,11 @@
+client_id: vedruna
+name: Clinica Madre Vedruna y Clinica Santa Isabel
+channels:
+  - whatsapp
+  - voice
+timezone: Europe/Madrid
+rules:
+  - No confirmar citas visibles sin rpa_create_appointment ok true.
+  - No dar precios.
+  - No enviar WhatsApps reales ni llamadas reales en desarrollo.
+  - RPA_DRY_RUN=true por defecto.

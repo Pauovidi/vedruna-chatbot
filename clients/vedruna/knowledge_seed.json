@@ -1,0 +1,28 @@
+{
+  "entries": [
+    {
+      "id": "vedruna_hours",
+      "title": "Horarios",
+      "content": "Clinica Madre Vedruna abre martes y jueves de 09:30 a 13:30 y de 15:30 a 19:30, y viernes de 09:00 a 17:00. Clinica Santa Isabel abre lunes y miercoles de 09:30 a 13:30 y de 15:30 a 19:30.",
+      "tags": ["horarios", "madre vedruna", "santa isabel"]
+    },
+    {
+      "id": "vedruna_locations",
+      "title": "Direcciones",
+      "content": "Madre Vedruna esta en Madre Vedruna 14, bajo derecha. Santa Isabel esta en Avenida Santa Isabel numero 82, local, 50016 Zaragoza.",
+      "tags": ["direccion", "ubicacion"]
+    },
+    {
+      "id": "vedruna_insurance",
+      "title": "Seguros",
+      "content": "En Madre Vedruna se trabaja con Sanitas, Generali y particular. En Santa Isabel se trabaja solo de forma particular.",
+      "tags": ["seguros", "sanitas", "generali", "particular"]
+    },
+    {
+      "id": "vedruna_services",
+      "title": "Servicios citables",
+      "content": "En Madre Vedruna el asistente puede citar podologia. En Santa Isabel puede ayudar con quiropodia, estudio biomecanico de la marcha, infiltracion u otro problema y tratamientos de ecografia.",
+      "tags": ["servicios", "podologia", "quiropodia"]
+    }
+  ]
+}

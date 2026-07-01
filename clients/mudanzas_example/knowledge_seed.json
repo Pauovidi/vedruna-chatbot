@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "id": "mudanzas_quote_fields",
+      "title": "Datos para presupuesto",
+      "content": "Para preparar una solicitud de mudanza se necesitan origen, destino, fecha aproximada, tipo de vivienda, ascensor, volumen aproximado y servicios extra como embalaje, desmontaje o guardamuebles.",
+      "tags": ["presupuesto", "datos", "mudanza"]
+    },
+    {
+      "id": "mudanzas_no_fixed_price",
+      "title": "Precios no cerrados",
+      "content": "No se dan precios cerrados sin calculo o revision del equipo. Se puede orientar al usuario indicando que hace falta revisar los datos.",
+      "tags": ["precio", "presupuesto"]
+    },
+    {
+      "id": "mudanzas_availability",
+      "title": "Disponibilidad",
+      "content": "La disponibilidad debe confirmarse por backend o por una persona del equipo. No se promete una fecha disponible sin confirmacion.",
+      "tags": ["fecha", "disponibilidad"]
+    }
+  ]
+}

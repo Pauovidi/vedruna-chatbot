@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "id": "generic_service_fields",
+      "title": "Datos genericos",
+      "content": "Para resolver solicitudes se pueden necesitar fecha, hora, nombre, servicio, descripcion, autorizacion y confirmacion.",
+      "tags": ["servicio", "fecha", "hora", "confirmacion"]
+    },
+    {
+      "id": "generic_safe_price",
+      "title": "Precios genericos",
+      "content": "No se deben dar precios cerrados sin datos suficientes o una fuente autorizada.",
+      "tags": ["precio", "coste"]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+cases:
+  - name: greeting generic
+    channel: whatsapp
+    input: Hola
+    expected_intent: general
+    expected_action_type: fallback_contextual
+    expected_reply_key: fallback_contextual
+    forbidden_contains:
+      - policy
+      - NLU
+      - handoff
+  - name: correction generic
+    channel: whatsapp
+    input: me faltan 8, no una
+    expected_intent: correction
+    expected_action_type: clarify_scope
+    expected_reply_key: correction_ack
+    expected_contains:
+      - correccion
+  - name: cancel flow generic
+    channel: whatsapp
+    multi_turn:
+      - input: Necesito gestionar una reserva
+        expected_action_type: fallback_contextual
+      - input: solo informacion
+        expected_intent: information_only
+        expected_action_type: cancel_flow
+        expected_reply_key: information_only_ack
+  - name: price question generic
+    channel: whatsapp
+    input: cuanto cuesta?
+    expected_intent: price_question
+    expected_action_type: answer_information
+    expected_reply_key: price_contextual
+    expected_contains:
+      - respuesta fiable
+  - name: partial date before time generic
+    channel: whatsapp
+    input: mañana
+    expected_intent: general
+    expected_action_type: fallback_contextual
+    expected_reply_key: fallback_contextual
+  - name: time and same time generic
+    channel: whatsapp
+    multi_turn:
+      - input: a las 10
+        expected_intent: general
+        expected_action_type: fallback_contextual
+      - input: pasado mañana a la misma hora
+        expected_intent: general
+        expected_action_type: fallback_contextual
+  - name: human handoff generic
+    channel: whatsapp
+    input: quiero hablar con una persona
+    expected_action_type: handoff_visible
+    expected_reply_key: handoff_visible_success
+    expected_requires_human: true
+    expected_contains:
+      - equipo
+    forbidden_contains:
+      - handoff
+      - manual review
+  - name: callbot voice handoff generic
+    channel: voice
+    input: quiero hablar con una persona
+    expected_action_type: handoff_visible
+    expected_reply_key: handoff_visible_success
+    expected_requires_human: true

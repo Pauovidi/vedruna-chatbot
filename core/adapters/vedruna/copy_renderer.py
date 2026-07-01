@@ -1,0 +1,223 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any
+
+from core.adapters.vedruna.domain_schema import (
+    Clinic,
+    clinic_address,
+    clinic_label,
+    clinic_phone,
+)
+from core.conversation.actions import ConversationAction
+from core.conversation.copy_renderer import RenderedReply
+from core.conversation.reply_guardrails import adapt_for_channel, sanitize_visible_text
+from core.conversation.state_manager import ConversationState
+from core.llm.schemas import ToolResult
+
+
+def render_vedruna_reply(
+    action: ConversationAction,
+    context: ConversationState,
+    channel: str,
+    tool_results: list[ToolResult] | None = None,
+) -> RenderedReply:
+    if not action.visible_reply_required:
+        return RenderedReply(
+            text="",
+            channel=channel,
+            reply_key=action.reply_key,
+            visibility="suppressed",
+        )
+    tool_result = tool_results[-1] if tool_results else None
+    text = _render_text(action.reply_key, context, tool_result, channel)
+    safe_text = adapt_for_channel(sanitize_visible_text(text), channel)
+    return RenderedReply(
+        text=safe_text,
+        channel=channel,
+        reply_key=action.reply_key,
+        handoff_notice_sent=action.visible_handoff_required and bool(safe_text),
+    )
+
+
+def _render_text(
+    reply_key: str,
+    context: ConversationState,
+    tool_result: ToolResult | None,
+    channel: str,
+) -> str:
+    slots = context.slots
+    clinic = slots.get("clinic")
+    if reply_key == "vedruna_greeting":
+        if channel == "voice":
+            return (
+                "Hola, soy el asistente de Clinica Madre Vedruna y Clinica Santa Isabel, "
+                "en que puedo ayudarte?"
+            )
+        return (
+            "Hola. Estas hablando con el asistente de Clinica Madre Vedruna y "
+            "Clinica Santa Isabel. En que puedo ayudarte?"
+        )
+    if reply_key == "vedruna_ask_clinic":
+        return "Para que clinica quieres la cita: Madre Vedruna o Santa Isabel?"
+    if reply_key == "vedruna_ask_service_madre":
+        return "En Madre Vedruna puedo ayudarte a citar podologia. Es para podologia?"
+    if reply_key == "vedruna_ask_service_santa":
+        return (
+            "En Santa Isabel puedo ayudarte con quiropodia, estudio biomecanico, "
+            "infiltracion, ecografia u otro problema. Que necesitas?"
+        )
+    if reply_key == "vedruna_ask_insurance":
+        return "Vienes por Sanitas, Generali o particular?"
+    if reply_key == "vedruna_ask_first_name":
+        return "Dime tu nombre, por favor."
+    if reply_key == "vedruna_ask_last_names":
+        return "Gracias. Ahora dime tus apellidos."
+    if reply_key == "vedruna_ask_phone":
+        return "Dime un telefono de contacto, por favor."
+    if reply_key == "vedruna_ask_reason":
+        return "Cual es el motivo de la consulta?"
+    if reply_key == "vedruna_ask_date":
+        return "Que dia o franja prefieres para la cita?"
+    if reply_key == "vedruna_searching_availability":
+        return "Voy a mirar disponibilidad."
+    if reply_key == "vedruna_offer_slots":
+        return _render_slots(tool_result, channel)
+    if reply_key == "vedruna_creating_appointment":
+        return "Voy a intentar crear la cita."
+    if reply_key == "vedruna_confirm_appointment":
+        return _render_confirmation(tool_result)
+    if reply_key == "vedruna_create_dry_run_notice":
+        return (
+            "La cita queda simulada en entorno de prueba. No se ha escrito en el "
+            "software real de la clinica."
+        )
+    if reply_key == "vedruna_rpa_failure":
+        return (
+            "No he podido completar la gestion ahora. Llama a la clinica para que "
+            "lo revisen directamente."
+        )
+    if reply_key == "vedruna_price_with_clinic":
+        return (
+            f"Para consultar precios, por favor llama a {clinic_label(clinic)} al "
+            f"{clinic_phone(clinic)}. Alli podran informarte segun tu caso."
+        )
+    if reply_key == "vedruna_price_ask_clinic":
+        return (
+            "Para consultar precios, dime primero si quieres contactar con Madre "
+            "Vedruna o Santa Isabel y te paso el telefono correspondiente."
+        )
+    if reply_key == "vedruna_urgent_whatsapp":
+        return (
+            "No puedo valorar urgencias sanitarias por aqui. Puedo buscar la cita "
+            "real mas proxima; si necesitas valoracion inmediata, llama directamente "
+            "a la clinica."
+        )
+    if reply_key == "vedruna_unsupported_specialty":
+        phone = clinic_phone(clinic or Clinic.MADRE_VEDRUNA.value)
+        return (
+            "Para traumatologia o psicologia, contacta directamente con Madre Vedruna "
+            f"al {phone}."
+        )
+    if reply_key == "vedruna_service_not_allowed":
+        return "Ese servicio no se puede citar desde este asistente para la clinica elegida."
+    if reply_key == "vedruna_santa_isabel_particular_only":
+        return (
+            "Santa Isabel trabaja solo de forma particular. Si quieres usar Sanitas "
+            "o Generali, puedo mirar Madre Vedruna."
+        )
+    if reply_key == "vedruna_faq_hours":
+        return (
+            "Madre Vedruna abre martes y jueves de 09:30 a 13:30 y de 15:30 a 19:30, "
+            "y viernes de 09:00 a 17:00. Santa Isabel abre lunes y miercoles de "
+            "09:30 a 13:30 y de 15:30 a 19:30."
+        )
+    if reply_key == "vedruna_faq_location":
+        return (
+            "Madre Vedruna esta en Madre Vedruna 14, bajo derecha. Santa Isabel esta "
+            "en Avenida Santa Isabel numero 82, local, 50016 Zaragoza."
+        )
+    if reply_key == "vedruna_faq_services":
+        return (
+            "En Madre Vedruna puedo citar podologia. En Santa Isabel puedo ayudar con "
+            "quiropodia, estudio biomecanico, infiltracion, ecografia u otro problema."
+        )
+    if reply_key == "vedruna_faq_insurance":
+        return (
+            "En Madre Vedruna se trabaja con Sanitas, Generali y particular. "
+            "En Santa Isabel se trabaja solo de forma particular."
+        )
+    if reply_key == "vedruna_human_handoff":
+        return "Paso tu consulta al equipo para que te contesten lo antes posible."
+    if reply_key == "vedruna_voice_transfer":
+        return "Te paso con la clinica para que puedan atenderte directamente."
+    if reply_key == "vedruna_ask_phone_for_lookup":
+        return "Dime el telefono asociado a la cita, por favor."
+    if reply_key == "vedruna_lookup_recall":
+        return "Voy a buscar tu cita."
+    if reply_key == "vedruna_recall_result":
+        return _render_recall(tool_result)
+    if reply_key == "vedruna_lookup_cancel":
+        return "Voy a buscar la cita antes de cancelar nada."
+    if reply_key == "vedruna_cancel_confirm_prompt":
+        return "He encontrado una cita. Confirmame claramente si quieres cancelarla."
+    if reply_key == "vedruna_cancelled":
+        return "La cita se ha cancelado correctamente."
+    if reply_key == "vedruna_lookup_reschedule":
+        return "Voy a buscar la cita antes de modificarla."
+    if reply_key == "vedruna_reschedule_result":
+        return "He encontrado la cita. Dime la nueva fecha o franja que prefieres."
+    return "Cuentame un poco mas y te ayudo paso a paso."
+
+
+def _render_slots(tool_result: ToolResult | None, channel: str) -> str:
+    slots = _tool_slots(tool_result)
+    if not slots:
+        return "No he encontrado huecos para esa preferencia. Probamos con otra franja?"
+    first_two = slots[:2] if channel == "voice" else slots[:3]
+    parts = []
+    for index, slot in enumerate(first_two, start=1):
+        start = _format_datetime(slot.get("start"))
+        parts.append(f"Opcion {index}: {start}")
+    if channel == "voice":
+        return f"Tengo estas opciones: {'; '.join(parts)}. Cual prefieres?"
+    return "Tengo estas opciones reales disponibles:\n" + "\n".join(parts)
+
+
+def _render_confirmation(tool_result: ToolResult | None) -> str:
+    data = tool_result.data if tool_result else {}
+    start = _format_datetime(data.get("start"))
+    clinic = clinic_label(data.get("clinic"))
+    return f"\U0001F4C5 Confirmamos tu cita el {start} en la clinica {clinic}."
+
+
+def _render_recall(tool_result: ToolResult | None) -> str:
+    data = tool_result.data if tool_result else {}
+    appointment = data.get("appointment") if isinstance(data.get("appointment"), dict) else None
+    if not appointment:
+        return "No he encontrado una cita con esos datos."
+    start = _format_datetime(appointment.get("start"))
+    clinic = appointment.get("clinic")
+    return (
+        f"Tienes una cita el {start} en la clinica {clinic_label(clinic)}, "
+        f"en {clinic_address(clinic)}."
+    )
+
+
+def _tool_slots(tool_result: ToolResult | None) -> list[dict[str, Any]]:
+    if not tool_result:
+        return []
+    slots = tool_result.data.get("slots")
+    return slots if isinstance(slots, list) else []
+
+
+def _format_datetime(value: Any) -> str:
+    if not value:
+        return "la fecha indicada"
+    if not isinstance(value, str):
+        return str(value)
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return value
+    return parsed.strftime("%d/%m/%Y a las %H:%M")

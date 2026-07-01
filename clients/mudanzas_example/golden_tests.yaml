@@ -1,0 +1,58 @@
+cases:
+  - name: presupuesto incompleto
+    channel: whatsapp
+    input: Hola, necesito una mudanza
+    expected_intent: quote_lead
+    expected_action_type: ask_missing_context
+    expected_reply_key: mudanzas_ask_origin
+    expected_contains:
+      - origen
+    expected_source_ids:
+      - mudanzas_quote_fields
+    forbidden_contains:
+      - policy
+      - NLU
+      - tool
+  - name: precio sin datos
+    channel: whatsapp
+    input: Cuanto cuesta una mudanza?
+    expected_intent: price_question
+    expected_action_type: answer_information
+    expected_reply_key: mudanzas_price_context
+    expected_contains:
+      - precio fiable
+    forbidden_contains:
+      - dry_run
+      - risk_level
+  - name: correccion de dato
+    channel: whatsapp
+    multi_turn:
+      - input: Necesito presupuesto de mudanza
+        expected_action_type: ask_missing_context
+        expected_reply_key: mudanzas_ask_origin
+      - input: me faltan 8, no una
+        expected_intent: correction
+        expected_action_type: clarify_scope
+        expected_reply_key: correction_ack
+        expected_contains:
+          - correccion
+  - name: solo informacion cancela flujo
+    channel: whatsapp
+    multi_turn:
+      - input: Necesito presupuesto de mudanza
+        expected_reply_key: mudanzas_ask_origin
+      - input: solo informacion, no quiero cita
+        expected_intent: information_only
+        expected_action_type: cancel_flow
+        expected_reply_key: information_only_ack
+        expected_contains:
+          - solo como consulta
+  - name: handoff visible
+    channel: whatsapp
+    input: Estoy enfadado, nadie me contesta
+    expected_intent: complaint
+    expected_action_type: handoff_visible
+    expected_reply_key: handoff_visible_success
+    expected_requires_human: true
+    expected_contains:
+      - equipo

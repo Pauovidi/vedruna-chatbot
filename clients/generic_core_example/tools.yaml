@@ -1,0 +1,11 @@
+tools:
+  - name: handoff_to_human
+    description: Derivar a una persona del equipo.
+    risk_level: low
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - webchat
+      - voice
+    handler: builtin

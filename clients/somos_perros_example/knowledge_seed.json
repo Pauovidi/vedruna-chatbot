@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "id": "perros_reservation_fields",
+      "title": "Datos para reserva",
+      "content": "Para preparar una reserva se necesitan nombre del perro o perros, fechas de entrada y salida, horario aproximado, necesidades especiales, alimentacion o medicacion y si es cliente habitual o nuevo.",
+      "tags": ["reserva", "fechas", "perros"]
+    },
+    {
+      "id": "perros_availability",
+      "title": "Disponibilidad",
+      "content": "La disponibilidad del hotel canino debe consultarse con backend o con una persona del equipo. No se confirma plaza sin resultado real.",
+      "tags": ["disponibilidad", "reserva"]
+    },
+    {
+      "id": "perros_visits",
+      "title": "Visitas",
+      "content": "Las visitas se pueden solicitar, pero el horario debe confirmarlo el equipo para no interferir con el descanso y cuidado de los perros alojados.",
+      "tags": ["visita", "hotel"]
+    }
+  ]
+}

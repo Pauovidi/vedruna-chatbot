@@ -1,0 +1,43 @@
+cases:
+  - name: greeting
+    input: "hola"
+    channel: whatsapp
+    expected_reply_key: vedruna_greeting
+    expected_contains:
+      - Madre Vedruna
+      - Santa Isabel
+
+  - name: appointment_without_clinic
+    input: "quiero cita"
+    channel: whatsapp
+    expected_reply_key: vedruna_ask_clinic
+    expected_contains:
+      - Madre Vedruna
+      - Santa Isabel
+
+  - name: price_without_amount
+    input: "precio de quiropodia"
+    channel: whatsapp
+    expected_reply_key: vedruna_price_ask_clinic
+    forbidden_contains:
+      - euros
+      - "20"
+
+  - name: santa_isabel_no_insurance
+    multi_turn:
+      - input: "quiero cita en Santa Isabel para quiropodia"
+        channel: whatsapp
+        expected_reply_key: vedruna_ask_first_name
+      - input: "me llamo Ana Perez"
+        channel: whatsapp
+        expected_reply_key: vedruna_ask_phone
+
+  - name: madre_vedruna_requires_insurance
+    input: "quiero cita en Vedruna para podologia"
+    channel: whatsapp
+    expected_reply_key: vedruna_ask_insurance
+
+  - name: voice_price_transfer
+    input: "cuanto cuesta"
+    channel: voice
+    expected_reply_key: vedruna_price_ask_clinic

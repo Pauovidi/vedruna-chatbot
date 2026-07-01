@@ -1,0 +1,66 @@
+tools:
+  - name: rpa_search_availability
+    description: Consultar disponibilidad real de citas en RPA Vedruna.
+    risk_level: low
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - webchat
+      - voice
+    handler: rpa_appointments
+  - name: rpa_create_appointment
+    description: Crear una cita mediante la RPA externa cuando hay slot real elegido.
+    risk_level: high
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - webchat
+      - voice
+    handler: rpa_appointments
+  - name: rpa_find_appointment
+    description: Buscar citas existentes por datos del paciente.
+    risk_level: low
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - webchat
+      - voice
+    handler: rpa_appointments
+  - name: rpa_cancel_appointment
+    description: Cancelar una cita existente tras confirmacion conversacional.
+    risk_level: high
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - voice
+    handler: rpa_appointments
+  - name: rpa_reschedule_appointment
+    description: Reagendar una cita existente tras elegir nuevo slot RPA.
+    risk_level: high
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - voice
+    handler: rpa_appointments
+  - name: schedule_reminder
+    description: Programar recordatorio WhatsApp 24 horas antes de una cita ya creada.
+    risk_level: medium
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - whatsapp
+      - webchat
+    handler: rpa_appointments
+  - name: voice_transfer_call
+    description: Preparar transferencia de llamada a la clinica correspondiente.
+    risk_level: low
+    required_confirmation: false
+    required_flags: []
+    allowed_channels:
+      - voice
+    handler: voice_transfer

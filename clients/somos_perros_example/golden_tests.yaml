@@ -1,0 +1,45 @@
+cases:
+  - name: reserva incompleta
+    channel: whatsapp
+    input: Quiero reservar para Yuyu y Kira
+    expected_intent: reservation
+    expected_action_type: ask_missing_context
+    expected_reply_key: perros_ask_dates
+    expected_contains:
+      - fechas
+    expected_source_ids:
+      - perros_reservation_fields
+  - name: pago contextual
+    channel: whatsapp
+    multi_turn:
+      - input: Quiero reservar para Yuyu
+        expected_reply_key: perros_ask_dates
+      - input: Y el pago?
+        expected_intent: price_question
+        expected_action_type: answer_information
+        expected_reply_key: perros_price_context
+        expected_contains:
+          - fechas
+  - name: respuesta corta usa ultima pregunta
+    channel: whatsapp
+    multi_turn:
+      - input: Quiero reservar para Yuyu
+        expected_reply_key: perros_ask_dates
+      - input: perfecto
+        expected_intent: reservation
+        expected_action_type: ask_missing_context
+        expected_reply_key: perros_ask_dates
+        forbidden_contains:
+          - policy
+          - handoff
+  - name: niega reserva
+    channel: whatsapp
+    multi_turn:
+      - input: Quiero reservar para Yuyu
+        expected_reply_key: perros_ask_dates
+      - input: no quiero reserva, solo informacion
+        expected_intent: information_only
+        expected_action_type: cancel_flow
+        expected_reply_key: information_only_ack
+        expected_contains:
+          - informacion
