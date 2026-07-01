@@ -109,8 +109,8 @@ def _render_text(
         )
     if reply_key == "vedruna_urgent_whatsapp":
         return (
-            "No puedo valorar urgencias sanitarias por aqui. Puedo buscar la cita "
-            "real mas proxima; si necesitas valoracion inmediata, llama directamente "
+            "No puedo valorar urgencias sanitarias por aqui. Puedo iniciar la busqueda "
+            "de la cita mas proxima; si necesitas valoracion inmediata, llama directamente "
             "a la clinica."
         )
     if reply_key == "vedruna_unsupported_specialty":
@@ -160,13 +160,25 @@ def _render_text(
     if reply_key == "vedruna_lookup_cancel":
         return "Voy a buscar la cita antes de cancelar nada."
     if reply_key == "vedruna_cancel_confirm_prompt":
+        if _is_dry_run_lookup(tool_result):
+            return (
+                "He simulado la busqueda en entorno de prueba. No se ha consultado "
+                "el software real de la clinica ni se cancelara ninguna cita real."
+            )
         return "He encontrado una cita. Confirmame claramente si quieres cancelarla."
     if reply_key == "vedruna_cancelled":
         return "La cita se ha cancelado correctamente."
     if reply_key == "vedruna_lookup_reschedule":
         return "Voy a buscar la cita antes de modificarla."
     if reply_key == "vedruna_reschedule_result":
+        if _is_dry_run_lookup(tool_result):
+            return (
+                "He simulado la busqueda en entorno de prueba. Dime la nueva fecha "
+                "solo si quieres probar el flujo sin tocar el software real."
+            )
         return "He encontrado la cita. Dime la nueva fecha o franja que prefieres."
+    if reply_key == "vedruna_rescheduled":
+        return "La cita se ha modificado correctamente."
     return "Cuentame un poco mas y te ayudo paso a paso."
 
 
@@ -179,12 +191,27 @@ def _render_slots(tool_result: ToolResult | None, channel: str) -> str:
     for index, slot in enumerate(first_two, start=1):
         start = _format_datetime(slot.get("start"))
         parts.append(f"Opcion {index}: {start}")
+    qualifier = (
+        "opciones simuladas de prueba"
+        if _is_dry_run_lookup(tool_result)
+        else "opciones reales disponibles"
+    )
     if channel == "voice":
-        return f"Tengo estas opciones: {'; '.join(parts)}. Cual prefieres?"
-    return "Tengo estas opciones reales disponibles:\n" + "\n".join(parts)
+        return f"Tengo estas {qualifier}: {'; '.join(parts)}. Cual prefieres?"
+    return f"Tengo estas {qualifier}:\n" + "\n".join(parts)
 
 
 def _render_confirmation(tool_result: ToolResult | None) -> str:
+    if (
+        tool_result is None
+        or tool_result.status != "success"
+        or tool_result.data.get("ok") is not True
+        or tool_result.data.get("dry_run") is True
+    ):
+        return (
+            "No he podido confirmar la cita ahora. Llama a la clinica para que "
+            "lo revisen directamente."
+        )
     data = tool_result.data if tool_result else {}
     start = _format_datetime(data.get("start"))
     clinic = clinic_label(data.get("clinic"))
@@ -193,6 +220,11 @@ def _render_confirmation(tool_result: ToolResult | None) -> str:
 
 def _render_recall(tool_result: ToolResult | None) -> str:
     data = tool_result.data if tool_result else {}
+    if data.get("dry_run") is True:
+        return (
+            "Consulta simulada en entorno de prueba. No se ha consultado el software "
+            "real de la clinica."
+        )
     appointment = data.get("appointment") if isinstance(data.get("appointment"), dict) else None
     if not appointment:
         return "No he encontrado una cita con esos datos."
@@ -209,6 +241,10 @@ def _tool_slots(tool_result: ToolResult | None) -> list[dict[str, Any]]:
         return []
     slots = tool_result.data.get("slots")
     return slots if isinstance(slots, list) else []
+
+
+def _is_dry_run_lookup(tool_result: ToolResult | None) -> bool:
+    return bool(tool_result and tool_result.data.get("dry_run") is True)
 
 
 def _format_datetime(value: Any) -> str:

@@ -144,7 +144,23 @@ def _cancellation_action(
             "patient_phone",
             flow="vedruna_cancellation",
         )
-    if not slots.get("appointment_id"):
+    lookup = _last_lookup(context)
+    if nlu_intent(context) == "confirm_cancel_appointment" and lookup:
+        return ConversationAction(
+            action_type="call_tool",
+            reply_intent="cancel_appointment",
+            reply_key="vedruna_cancelling",
+            requires_tool=True,
+            tool_name="rpa_cancel_appointment",
+            tool_arguments={
+                "appointment_id": lookup.get("appointment_id"),
+                "conversation_id": context.conversation_id,
+            },
+            state_updates=_flow("vedruna_cancellation"),
+            safety_level="high",
+            metadata={"vedruna_flow": "cancel_confirmed"},
+        )
+    if not lookup:
         return ConversationAction(
             action_type="call_tool",
             reply_intent="find_appointment_for_cancel",
@@ -161,16 +177,78 @@ def _cancellation_action(
 def _reschedule_action(context: ConversationState, slots: dict[str, Any]) -> ConversationAction:
     if not slots.get("patient_phone"):
         return _ask("vedruna_ask_phone_for_lookup", "patient_phone", flow="vedruna_reschedule")
-    return ConversationAction(
-        action_type="call_tool",
-        reply_intent="find_appointment_for_reschedule",
-        reply_key="vedruna_lookup_reschedule",
-        requires_tool=True,
-        tool_name="rpa_find_appointment",
-        tool_arguments=_lookup_arguments(context, slots),
-        state_updates=_flow("vedruna_reschedule"),
-        metadata={"vedruna_flow": "reschedule_lookup"},
-    )
+    lookup = _last_lookup(context)
+    if not lookup:
+        return ConversationAction(
+            action_type="call_tool",
+            reply_intent="find_appointment_for_reschedule",
+            reply_key="vedruna_lookup_reschedule",
+            requires_tool=True,
+            tool_name="rpa_find_appointment",
+            tool_arguments=_lookup_arguments(context, slots),
+            state_updates=_flow("vedruna_reschedule"),
+            metadata={"vedruna_flow": "reschedule_lookup"},
+        )
+    if slots.get("selected_slot_id"):
+        return ConversationAction(
+            action_type="call_tool",
+            reply_intent="reschedule_appointment",
+            reply_key="vedruna_rescheduling",
+            requires_tool=True,
+            tool_name="rpa_reschedule_appointment",
+            tool_arguments={
+                "appointment_id": lookup.get("appointment_id"),
+                "new_slot_id": slots.get("selected_slot_id"),
+                "conversation_id": context.conversation_id,
+                "idempotency_key": (
+                    f"{context.conversation_id}:reschedule:{slots.get('selected_slot_id')}"
+                ),
+            },
+            state_updates=_flow("vedruna_reschedule"),
+            safety_level="high",
+            metadata={"vedruna_flow": "reschedule_confirmed"},
+        )
+    if slots.get("date_preference") or slots.get("time_preference"):
+        return ConversationAction(
+            action_type="call_tool",
+            reply_intent="search_reschedule_availability",
+            reply_key="vedruna_searching_availability",
+            requires_tool=True,
+            tool_name="rpa_search_availability",
+            tool_arguments=_reschedule_availability_arguments(context, slots, lookup),
+            state_updates={
+                **_flow("vedruna_reschedule"),
+                "tool_state": dict(context.tool_state),
+            },
+            metadata={"vedruna_flow": "reschedule_availability"},
+        )
+    return _reply("vedruna_reschedule_result", state_updates=_flow("vedruna_reschedule"))
+
+
+def nlu_intent(context: ConversationState) -> str | None:
+    return context.last_user_intent
+
+
+def _last_lookup(context: ConversationState) -> dict[str, Any] | None:
+    lookup = context.tool_state.get("last_lookup")
+    return lookup if isinstance(lookup, dict) else None
+
+
+def _reschedule_availability_arguments(
+    context: ConversationState,
+    slots: dict[str, Any],
+    lookup: dict[str, Any],
+) -> dict[str, Any]:
+    clinic = slots.get("clinic") or lookup.get("clinic")
+    service = slots.get("service") or lookup.get("service") or "podologia"
+    return {
+        "clinic": clinic,
+        "service": service,
+        "duration_minutes": appointment_duration_minutes(str(service)),
+        "date_preference": slots.get("date_preference"),
+        "time_preference": slots.get("time_preference"),
+        "conversation_id": context.conversation_id,
+    }
 
 
 def _recall_action(context: ConversationState, slots: dict[str, Any]) -> ConversationAction:

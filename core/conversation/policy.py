@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from core.adapters.vedruna import VEDRUNA_CLIENT_ID
 from core.adapters.vedruna.policy import decide_vedruna_action
 from core.conversation.actions import ConversationAction
@@ -276,6 +278,9 @@ def _reconcile_vedruna_tool_results(
             }
         )
     if action.tool_name == "rpa_search_availability":
+        previous_tool_state = action.state_updates.get("tool_state", {})
+        if not isinstance(previous_tool_state, dict):
+            previous_tool_state = {}
         return action.model_copy(
             update={
                 "action_type": "ask_missing_context",
@@ -286,6 +291,7 @@ def _reconcile_vedruna_tool_results(
                 "state_updates": {
                     **action.state_updates,
                     "tool_state": {
+                        **previous_tool_state,
                         "last_offered_slots": list(result.data.get("slots", [])),
                         "last_tool_status": "success",
                     },
@@ -312,7 +318,8 @@ def _reconcile_vedruna_tool_results(
                         "tool_state": {
                             "last_tool_status": "success",
                             "appointment_id": result.data.get("appointment_id"),
-                            "reminder": result.data.get("reminder"),
+                            "reminder": result.data.get("reminder")
+                            or _vedruna_reminder_plan(result.data),
                         },
                     },
                     "metadata": {**action.metadata, "tool_status": "success"},
@@ -351,11 +358,47 @@ def _reconcile_vedruna_tool_results(
             }
         )
     if action.tool_name == "rpa_cancel_appointment":
+        if result.data.get("ok") is not True or result.data.get("dry_run") is True:
+            return action.model_copy(
+                update={
+                    "action_type": "answer_information",
+                    "reply_intent": "rpa_failure",
+                    "reply_key": "vedruna_rpa_failure",
+                    "requires_tool": False,
+                    "tool_name": None,
+                }
+            )
         return action.model_copy(
             update={
                 "action_type": "answer_information",
                 "reply_intent": "appointment_cancelled",
                 "reply_key": "vedruna_cancelled",
+                "requires_tool": False,
+                "tool_name": None,
+                "state_updates": {
+                    **action.state_updates,
+                    "current_flow": None,
+                    "active_flow": None,
+                },
+                "metadata": {**action.metadata, "tool_status": "success"},
+            }
+        )
+    if action.tool_name == "rpa_reschedule_appointment":
+        if result.data.get("ok") is not True or result.data.get("dry_run") is True:
+            return action.model_copy(
+                update={
+                    "action_type": "answer_information",
+                    "reply_intent": "rpa_failure",
+                    "reply_key": "vedruna_rpa_failure",
+                    "requires_tool": False,
+                    "tool_name": None,
+                }
+            )
+        return action.model_copy(
+            update={
+                "action_type": "answer_information",
+                "reply_intent": "appointment_rescheduled",
+                "reply_key": "vedruna_rescheduled",
                 "requires_tool": False,
                 "tool_name": None,
                 "state_updates": {
@@ -386,6 +429,22 @@ def _reconcile_vedruna_tool_results(
             "metadata": {**action.metadata, "tool_status": "success"},
         }
     )
+
+
+def _vedruna_reminder_plan(data: dict[str, object]) -> dict[str, object] | None:
+    start = data.get("start")
+    if not isinstance(start, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(start)
+    except ValueError:
+        return None
+    return {
+        "send_at": (parsed - timedelta(hours=24)).isoformat(),
+        "channel": "whatsapp",
+        "template": "appointment_reminder_24h",
+        "consent_prompt_required": False,
+    }
 
 
 def _mudanzas_action(context: ConversationState) -> ConversationAction:

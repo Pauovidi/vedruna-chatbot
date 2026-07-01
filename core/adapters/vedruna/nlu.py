@@ -148,6 +148,12 @@ def interpret_vedruna_message(
 
 
 def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) -> str:
+    current_flow = context.get("active_flow") or context.get("current_flow")
+    if (
+        current_flow == "vedruna_cancellation"
+        and normalized in {"si", "sí", "s", "confirmo", "cancelala", "cancela"}
+    ):
+        return "confirm_cancel_appointment"
     if any(term in normalized for term in ["precio", "cuanto cuesta", "coste", "tarifa"]):
         return "price_query"
     if any(term in normalized for term in ["persona", "humano", "operador"]):
@@ -175,7 +181,6 @@ def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) 
     if any(term in normalized for term in ["servicio", "que haceis", "que hacéis"]):
         return "faq_services"
     if any(term in normalized for term in ["seguro", "sanitas", "generali", "particular"]):
-        current_flow = context.get("active_flow") or context.get("current_flow")
         if current_flow == "vedruna_appointment" or any(
             term in normalized for term in ["cita", "reservar", "quiero ir", "consulta"]
         ):
@@ -206,6 +211,13 @@ def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) 
 
 
 def _active_topic(intent: str, context: dict[str, object]) -> str | None:
+    current = context.get("active_flow") or context.get("current_flow")
+    if isinstance(current, str) and current in {
+        "vedruna_cancellation",
+        "vedruna_reschedule",
+        "vedruna_recall",
+    }:
+        return current
     if intent in {
         "book_appointment",
         "choose_clinic",
@@ -224,7 +236,6 @@ def _active_topic(intent: str, context: dict[str, object]) -> str | None:
         return "vedruna_reschedule"
     if intent == "recall_appointment":
         return "vedruna_recall"
-    current = context.get("active_flow") or context.get("current_flow")
     if isinstance(current, str) and current.startswith("vedruna_"):
         return current
     return None
