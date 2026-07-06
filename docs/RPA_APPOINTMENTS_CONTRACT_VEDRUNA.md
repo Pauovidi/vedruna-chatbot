@@ -3,7 +3,7 @@
 ## Environment
 
 ```env
-RPA_BASE_URL=http://vedruna-rpa:8080
+RPA_BASE_URL=https://vedruna-rpa-rpa.ddxo6v.easypanel.host
 RPA_API_KEY=
 RPA_DRY_RUN=true
 RPA_TIMEOUT_MS=12000
@@ -22,39 +22,52 @@ Content-Type: application/json
 
 Secrets must not be logged or committed.
 
-## Endpoints expected
+## Health
+
+```http
+GET /health
+```
+
+Health is public and does not require auth.
+
+## Real APClinic endpoints
 
 ### Search availability
 
 ```http
-POST /availability/search
+POST /appointments/availability/search
 ```
 
-Input:
+Real request:
 
 ```json
 {
-  "clinic": "madre_vedruna",
-  "service": "podologia",
-  "duration_minutes": 20,
-  "date_preference": "tuesday",
-  "time_preference": "morning",
-  "conversation_id": "conv-123"
+  "date": "08/07/2026",
+  "preference": "todos",
+  "limit": 4,
+  "emergencia": false
 }
 ```
 
-Output:
+The internal adapter normalizes the real response:
 
 ```json
 {
   "ok": true,
+  "dry_run": false,
+  "date": "08/07/2026",
+  "dateISO": "2026-07-08",
+  "dateReadable": "miercoles, 8 de julio",
   "slots": [
     {
-      "slot_id": "rpa-slot-1",
-      "start": "2026-07-07T10:00:00+02:00",
-      "end": "2026-07-07T10:20:00+02:00",
-      "clinic": "madre_vedruna",
-      "address": "Madre Vedruna 14, bajo derecha"
+      "slot_id": "2026-07-08T12:30",
+      "date": "08/07/2026",
+      "dateISO": "2026-07-08",
+      "time": "12:30",
+      "start": "2026-07-08T12:30:00+02:00",
+      "clinic": "santa_isabel",
+      "service": "quiropodia",
+      "address": "Avenida Santa Isabel numero 82, local, 50016 Zaragoza"
     }
   ]
 }
@@ -63,12 +76,26 @@ Output:
 ### Create appointment
 
 ```http
-POST /appointments
+POST /appointments/create
 ```
 
-Input includes patient data, selected `slot_id`, insurance where needed, `conversation_id` and `idempotency_key`.
+The adapter sends `name`, `phone`, `date`, `time`, `type`, and `is_new_patient=true` unless a known-patient flow explicitly says otherwise. For insurance:
 
-Visible confirmation is allowed only on `ok=true` and non-dry-run success.
+- Sanitas -> `mutua=true`, `idMutua=1`
+- Generali -> `mutua=true`, `idMutua=12`
+
+TODO: confirm with clinic/RPA whether Generali maps to OCCIDENT id `12`.
+
+Visible confirmation is allowed only if the normalized result has:
+
+```json
+{
+  "ok": true,
+  "dry_run": false
+}
+```
+
+The normalized result also models the WhatsApp reminder 24h before the appointment.
 
 ### Find appointment
 
@@ -76,7 +103,7 @@ Visible confirmation is allowed only on `ok=true` and non-dry-run success.
 POST /appointments/find
 ```
 
-Used by recall, cancellation and reschedule.
+The adapter sends `phone` and optional `date`/`time`, then normalizes `idCita` to `appointment_id` and keeps both fields.
 
 ### Cancel appointment
 
@@ -84,7 +111,16 @@ Used by recall, cancellation and reschedule.
 POST /appointments/cancel
 ```
 
-Requires previous lookup and explicit conversational confirmation.
+The adapter sends:
+
+```json
+{
+  "idCita": "52549",
+  "phone": "600000001"
+}
+```
+
+Cancellation requires previous lookup and explicit conversational confirmation.
 
 ### Reschedule appointment
 
@@ -92,21 +128,13 @@ Requires previous lookup and explicit conversational confirmation.
 POST /appointments/reschedule
 ```
 
-Requires previous lookup, new availability and selected new slot.
-
-### Schedule reminder
-
-```http
-POST /reminders
-```
-
-Scheduled only after successful create. It is always WhatsApp and 24 hours before the appointment.
+The adapter sends `idCita`, `name`, `phone`, `date`, `time` and `type`. Reagendado requires previous lookup, new availability and selected new slot.
 
 ## Error handling
 
 - HTTP, timeout or invalid JSON -> `failed/rpa_http_error`.
-- `ok=false` -> `failed/<error_code or rpa_not_ok>`.
+- Missing required fields -> `failed/rpa_missing_required_fields`.
+- Real `success` not true -> `failed/rpa_not_ok`.
 - Dry-run writes -> `dry_run/dry_run_write_suppressed`.
 
 No RPA failure may produce appointment confirmation copy.
-

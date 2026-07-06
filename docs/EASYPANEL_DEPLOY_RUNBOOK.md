@@ -5,7 +5,7 @@ This repo is prepared for a future EasyPanel deploy. This run did not deploy.
 ## Source
 
 - GitHub repo: `https://github.com/Pauovidi/vedruna-chatbot`
-- Recommended branch: `codex/vedruna-from-core-rpa-twilio-v1`
+- Recommended branch: `codex/vedruna-production-rpa-corev2-twilio-postgres-v1`
 - Dockerfile port: `8080`
 
 ## Required environment
@@ -22,11 +22,20 @@ OPENAI_MODEL=<model>
 TWILIO_ACCOUNT_SID=<secret>
 TWILIO_AUTH_TOKEN=<secret>
 TWILIO_WHATSAPP_FROM=<number>
+TWILIO_VALIDATE_SIGNATURE=true
+TWILIO_WHATSAPP_REPLY_MODE=twiml
 TWILIO_VOICE_NUMBER=<number>
-RPA_BASE_URL=http://vedruna-rpa:8080
+CONVERSATION_RELAY_TTS_PROVIDER=ElevenLabs
+CONVERSATION_RELAY_VOICE=<voice_id>
+CONVERSATION_RELAY_LANGUAGE=es-ES
+CONVERSATION_RELAY_TRANSCRIPTION_LANGUAGE=es-ES
+CONVERSATION_RELAY_WELCOME_GREETING=Hola, soy el asistente de Clinica Madre Vedruna y Clinica Santa Isabel. En que puedo ayudarte?
+VOICE_TRANSFER_ENABLED=false
+RPA_BASE_URL=https://vedruna-rpa-rpa.ddxo6v.easypanel.host
 RPA_API_KEY=<secret>
 RPA_DRY_RUN=true
 RPA_TIMEOUT_MS=12000
+ADMIN_PANEL_API_KEY=<secret-if-admin-api-added>
 PII_MASKING_ENABLED=true
 ```
 
@@ -41,14 +50,16 @@ Production should report durable persistence through Postgres.
 
 ## RPA networking
 
-- Same EasyPanel network: prefer `http://vedruna-rpa:8080`.
 - External RPA: use HTTPS and API auth.
+- Health is `GET /health` and does not require auth.
+- Authenticated endpoints are under `/appointments/...`.
 
 ## Preproduction checklist
 
 - Domain final confirmed.
 - `VOICE_WS_URL` uses `wss://`.
 - Twilio credentials configured.
+- `TWILIO_VALIDATE_SIGNATURE=true` only after webhook URL and token are correct.
 - Meta/WhatsApp credentials configured if real WhatsApp send is enabled later.
 - RPA contract confirmed by the RPA owner.
 - RPA idempotency confirmed.
@@ -59,4 +70,3 @@ Production should report durable persistence through Postgres.
 ## Rollback
 
 Repoint EasyPanel to the previous branch or image. Keep `RPA_DRY_RUN=true` if there is any doubt about writes.
-

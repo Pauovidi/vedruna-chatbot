@@ -33,11 +33,11 @@ def decide_vedruna_action(
         return _reply("vedruna_greeting", state_updates=_flow(None))
 
     if intent == "human_handoff":
-        return _transfer_or_handoff(channel, slots.get("clinic"), "human_requested")
+        return _transfer_or_handoff(context, channel, slots.get("clinic"), "human_requested")
 
     if intent == "price_query":
         if channel == "voice" and slots.get("clinic"):
-            return _voice_transfer(slots.get("clinic"), "price_query")
+            return _voice_transfer(context, slots.get("clinic"), "price_query")
         reply_key = (
             "vedruna_price_with_clinic"
             if slots.get("clinic")
@@ -47,12 +47,12 @@ def decide_vedruna_action(
 
     if intent == "urgent_request":
         if channel == "voice":
-            return _voice_transfer(slots.get("clinic"), "urgent_request")
+            return _voice_transfer(context, slots.get("clinic"), "urgent_request")
         return _reply("vedruna_urgent_whatsapp", state_updates=_flow("vedruna_appointment"))
 
     if intent == "unsupported_specialty" or unsupported_service(slots.get("service")):
         if channel == "voice":
-            return _voice_transfer(slots.get("clinic"), "unsupported_specialty")
+            return _voice_transfer(context, slots.get("clinic"), "unsupported_specialty")
         return _reply("vedruna_unsupported_specialty", state_updates=_flow(None))
 
     if intent in {
@@ -153,7 +153,9 @@ def _cancellation_action(
             requires_tool=True,
             tool_name="rpa_cancel_appointment",
             tool_arguments={
-                "appointment_id": lookup.get("appointment_id"),
+                "idCita": lookup.get("idCita") or lookup.get("appointment_id"),
+                "appointment_id": lookup.get("appointment_id") or lookup.get("idCita"),
+                "phone": slots.get("patient_phone") or lookup.get("patient_phone"),
                 "conversation_id": context.conversation_id,
             },
             state_updates=_flow("vedruna_cancellation"),
@@ -197,8 +199,13 @@ def _reschedule_action(context: ConversationState, slots: dict[str, Any]) -> Con
             requires_tool=True,
             tool_name="rpa_reschedule_appointment",
             tool_arguments={
-                "appointment_id": lookup.get("appointment_id"),
+                "idCita": lookup.get("idCita") or lookup.get("appointment_id"),
+                "appointment_id": lookup.get("appointment_id") or lookup.get("idCita"),
+                "name": _patient_name(slots, lookup),
+                "phone": slots.get("patient_phone") or lookup.get("patient_phone"),
                 "new_slot_id": slots.get("selected_slot_id"),
+                "new_slot": _selected_slot_payload(context, slots),
+                "service": slots.get("service") or lookup.get("service"),
                 "conversation_id": context.conversation_id,
                 "idempotency_key": (
                     f"{context.conversation_id}:reschedule:{slots.get('selected_slot_id')}"
@@ -242,8 +249,8 @@ def _reschedule_availability_arguments(
     clinic = slots.get("clinic") or lookup.get("clinic")
     service = slots.get("service") or lookup.get("service") or "podologia"
     return {
-        "clinic": clinic,
-        "service": service,
+            "clinic": clinic,
+            "service": service,
         "duration_minutes": appointment_duration_minutes(str(service)),
         "date_preference": slots.get("date_preference"),
         "time_preference": slots.get("time_preference"),
@@ -266,9 +273,14 @@ def _recall_action(context: ConversationState, slots: dict[str, Any]) -> Convers
     )
 
 
-def _transfer_or_handoff(channel: str, clinic: str | None, reason: str) -> ConversationAction:
+def _transfer_or_handoff(
+    context: ConversationState,
+    channel: str,
+    clinic: str | None,
+    reason: str,
+) -> ConversationAction:
     if channel == "voice":
-        return _voice_transfer(clinic, reason)
+        return _voice_transfer(context, clinic, reason)
     return ConversationAction(
         action_type="handoff_visible",
         reply_intent=reason,
@@ -283,7 +295,11 @@ def _transfer_or_handoff(channel: str, clinic: str | None, reason: str) -> Conve
     )
 
 
-def _voice_transfer(clinic: str | None, reason: str) -> ConversationAction:
+def _voice_transfer(
+    context: ConversationState,
+    clinic: str | None,
+    reason: str,
+) -> ConversationAction:
     phone_number = clinic_phone(clinic)
     return ConversationAction(
         action_type="call_tool",
@@ -295,6 +311,7 @@ def _voice_transfer(clinic: str | None, reason: str) -> ConversationAction:
             "clinic": clinic or "unknown",
             "reason": reason,
             "phone_number": phone_number,
+            "call_sid": context.channel_context.get("call_sid"),
         },
         requires_human=True,
         target_role="clinical_team",
@@ -366,6 +383,7 @@ def _availability_arguments(
         "duration_minutes": appointment_duration_minutes(slots.get("service")),
         "date_preference": slots.get("date_preference"),
         "time_preference": slots.get("time_preference"),
+        "emergencia": bool(slots.get("urgent")),
         "conversation_id": context.conversation_id,
     }
 
@@ -375,6 +393,7 @@ def _create_arguments(context: ConversationState, slots: dict[str, Any]) -> dict
         "clinic": slots.get("clinic"),
         "service": slots.get("service"),
         "slot_id": slots.get("selected_slot_id"),
+        "selected_slot": _selected_slot_payload(context, slots),
         "patient": {
             "first_name": slots.get("patient_first_name"),
             "last_names": slots.get("patient_last_names"),
@@ -397,11 +416,40 @@ def _create_arguments(context: ConversationState, slots: dict[str, Any]) -> dict
 def _lookup_arguments(context: ConversationState, slots: dict[str, Any]) -> dict[str, Any]:
     return {
         "clinic": slots.get("clinic"),
+        "phone": slots.get("patient_phone"),
         "patient_phone": slots.get("patient_phone"),
         "patient_first_name": slots.get("patient_first_name"),
         "patient_last_names": slots.get("patient_last_names"),
         "conversation_id": context.conversation_id,
     }
+
+
+def _selected_slot_payload(
+    context: ConversationState,
+    slots: dict[str, Any],
+) -> dict[str, Any]:
+    slot_id = slots.get("selected_slot_id")
+    payload = {
+        "slot_id": slot_id,
+        "date": slots.get("selected_slot_date"),
+        "dateISO": slots.get("selected_slot_date_iso"),
+        "time": slots.get("selected_slot_time"),
+        "clinic": slots.get("clinic"),
+        "service": slots.get("service"),
+    }
+    offered = context.tool_state.get("last_offered_slots")
+    if isinstance(offered, list):
+        for candidate in offered:
+            if isinstance(candidate, dict) and candidate.get("slot_id") == slot_id:
+                return {**candidate, **{k: v for k, v in payload.items() if v}}
+    return {k: v for k, v in payload.items() if v}
+
+
+def _patient_name(slots: dict[str, Any], lookup: dict[str, Any]) -> str:
+    first = str(slots.get("patient_first_name") or "").strip()
+    last = str(slots.get("patient_last_names") or "").strip()
+    name = " ".join(part for part in [first, last] if part)
+    return name or str(lookup.get("patient_name") or "Paciente")
 
 
 _BOOKING_INTENTS = {

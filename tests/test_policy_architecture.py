@@ -24,6 +24,7 @@ from core.outbox import MemoryOutbox
 from core.persistence.memory import MemoryStore
 from core.tools.check_conversation_authority import check_conversation_authority
 from core.tools.registry import ToolRegistry
+from tests.vedruna_helpers import make_vedruna_orchestrator, turn
 
 
 class FailingNLUProvider(OpenAIProvider):
@@ -262,6 +263,23 @@ def test_authority_trace_and_state_after_timing_are_emitted() -> None:
     assert timing["openaiCalls"] == 0
     assert timing["totalDurationMs"] >= 0
     assert result.authority_trace is not None
+
+
+def test_authority_trace_includes_hybrid_routing_decision() -> None:
+    orchestrator, _store = make_vedruna_orchestrator()
+
+    result = turn(orchestrator, "precio en Santa Isabel")
+
+    decision = result.authority_trace["hybridRoutingDecision"]
+    assert decision["route"] in {
+        "rag_answer",
+        "safe_response",
+        "tool_action",
+        "clarify",
+        "deterministic_flow",
+    }
+    assert decision["source"] == "mapped_from_policy"
+    assert decision["confidence"] > 0
 
 
 def test_human_mode_allows_explicit_return_to_bot_command() -> None:

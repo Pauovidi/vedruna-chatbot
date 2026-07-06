@@ -16,6 +16,9 @@ def normalize_conversationrelay_event(payload: dict[str, Any]) -> NormalizedInbo
     )
     text = _event_text(event_type, payload)
     media: dict[str, Any] = {"conversationrelay_event": event_type}
+    call_sid = payload.get("callSid") or payload.get("CallSid")
+    if call_sid:
+        media["call_sid"] = str(call_sid)
     if event_type == "dtmf" and payload.get("digits"):
         media["dtmf"] = str(payload["digits"])
     return NormalizedInbound(
@@ -44,4 +47,3 @@ def _event_text(event_type: str, payload: dict[str, Any]) -> str:
         or payload.get("transcript")
         or ""
     )
-

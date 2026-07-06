@@ -27,6 +27,10 @@ def reduce_conversation_state(
         "language": nlu_result.language,
         "tone_hints": nlu_result.tone_hints,
     }
+    if isinstance(user_message.media, dict):
+        call_sid = user_message.media.get("call_sid") or user_message.media.get("CallSid")
+        if call_sid:
+            state.channel_context["call_sid"] = str(call_sid)
     state.price_question_pending = nlu_result.is_price_question
 
     if nlu_result.active_topic_hint:

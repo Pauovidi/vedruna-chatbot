@@ -12,6 +12,7 @@ from core.llm.schemas import Channel, ToolCallRequest, ToolResult
 from core.nlu.schemas import NLUResult
 from core.outbox.base import OutboxMessage as CoreOutboxMessage
 from core.outbox.base import OutboxResult as CoreOutboxResult
+from core.router.hybrid import HybridRoutingDecision
 
 
 class NormalizedInbound(BaseModel):
@@ -115,6 +116,9 @@ class AuthorityTurnTrace(BaseModel):
     active_flow_after: str | None = Field(default=None, alias="activeFlowAfter")
     policy_action: str | None = Field(default=None, alias="policyAction")
     policy_reason: str | None = Field(default=None, alias="policyReason")
+    hybrid_routing_decision: HybridRoutingDecision | None = Field(
+        default=None, alias="hybridRoutingDecision"
+    )
     render_key: str | None = Field(default=None, alias="renderKey")
     outbox_kind: Literal["outbox_send", "dry_run", "suppressed"] = Field(
         default="suppressed", alias="outboxKind"

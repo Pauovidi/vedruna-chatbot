@@ -6,7 +6,7 @@
 - WebSocket: `WS /webhook/voice/conversationrelay/ws`
 - Health: `GET /__health` and `GET /healthz`
 
-The TwiML endpoint returns a `<Connect><ConversationRelay ... /></Connect>` response using `VOICE_WS_URL`.
+The TwiML endpoint returns a `<Connect><ConversationRelay ... /></Connect>` response using `VOICE_WS_URL`. `VOICE_WS_URL` must be a public `wss://` URL.
 
 ## Event mapping
 
@@ -19,8 +19,25 @@ The TwiML endpoint returns a `<Connect><ConversationRelay ... /></Connect>` resp
 
 - Greeting references Clinica Madre Vedruna and Clinica Santa Isabel.
 - Price, human request, urgent request and unsupported specialty transfer via `voice_transfer_call`.
+- With `VOICE_TRANSFER_ENABLED=false`, the assistant does not claim that a real Twilio transfer happened.
+- With `VOICE_TRANSFER_ENABLED=true`, the handler requires `CallSid`, Twilio credentials and a target clinic phone, then updates the active Twilio call through the REST API.
 - Slot offers are limited to two options.
 - Confirmation still requires RPA create success.
+
+## ConversationRelay variables
+
+```env
+VOICE_WS_URL=wss://chatbot.<dominio-final>/webhook/voice/conversationrelay/ws
+CONVERSATION_RELAY_TTS_PROVIDER=ElevenLabs
+CONVERSATION_RELAY_VOICE=<voice_id>
+CONVERSATION_RELAY_LANGUAGE=es-ES
+CONVERSATION_RELAY_TRANSCRIPTION_LANGUAGE=es-ES
+CONVERSATION_RELAY_WELCOME_GREETING=Hola, soy el asistente de Clinica Madre Vedruna y Clinica Santa Isabel. En que puedo ayudarte?
+VOICE_TRANSFER_ENABLED=false
+TWILIO_ACCOUNT_SID=<secret>
+TWILIO_AUTH_TOKEN=<secret>
+TWILIO_VOICE_NUMBER=<number>
+```
 
 ## Local dry-run test
 
@@ -34,6 +51,5 @@ Then call `POST /clients/vedruna/chat` with `channel=voice` for no-call smoke te
 
 - Twilio needs a public secure `wss://` URL.
 - The provisional IP is not enough as final voice URL.
-- HTTP webhook signature validation should be added before real production calls if not supplied by the hosting edge.
+- Keep `VOICE_TRANSFER_ENABLED=false` until real transfer behavior is manually approved.
 - Do not place Twilio secrets in code or docs.
-

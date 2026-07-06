@@ -31,6 +31,8 @@ def test_voice_price_with_clinic_transfers() -> None:
     assert result.reply_key == "vedruna_voice_transfer"
     assert result.requires_human is True
     assert result.tool_results[0].name == "voice_transfer_call"
+    assert result.tool_results[0].data["transfer_enabled"] is False
+    assert "transferencia real" in result.reply_text.lower()
 
 
 def test_voice_dtmf_selects_first_offered_slot() -> None:

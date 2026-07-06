@@ -67,6 +67,8 @@ def test_full_booking_dry_run_offers_slots_but_does_not_confirm_real_appointment
     assert "Confirmamos tu cita" not in selected.reply_text
     state = store.load_state(conversation_id, "vedruna")
     assert state.slots["selected_slot_id"] == "dry-madre_vedruna-1"
+    assert state.slots["selected_slot_date"] == "07/07/2026"
+    assert state.slots["selected_slot_time"] == "10:00"
 
 
 def test_cancel_lookup_preserves_flow_and_dry_run_never_cancels_real_appointment() -> None:

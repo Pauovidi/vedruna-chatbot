@@ -20,3 +20,4 @@ def test_conversationrelay_dtmf_normalizes_media() -> None:
     assert inbound.client_id == "vedruna"
     assert inbound.channel == "voice"
     assert inbound.media["dtmf"] == "2"
+    assert inbound.media["call_sid"] == "c1"

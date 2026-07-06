@@ -1,7 +1,31 @@
 from __future__ import annotations
 
-from core.adapters.vedruna.tools.rpa_appointments import RPAAppointmentClient
+import json
+from typing import Any
+
+from core.adapters.vedruna.tools import rpa_appointments
+from core.adapters.vedruna.tools.rpa_appointments import (
+    RPAAppointmentClient,
+    VoiceTransferHandler,
+)
 from core.config import Settings
+from core.conversation.actions import ConversationAction
+from core.conversation.policy import reconcile_tool_results
+from core.llm.schemas import ToolCallRequest
+
+
+class FakeResponse:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.payload = payload
+
+    def __enter__(self) -> FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self.payload).encode("utf-8")
 
 
 def test_rpa_availability_returns_dry_run_slots() -> None:
@@ -22,3 +46,220 @@ def test_rpa_create_is_suppressed_in_dry_run() -> None:
     assert result.status == "dry_run"
     assert result.internal_code == "dry_run_write_suppressed"
     assert result.data["arguments"]["patient"]["phone"] == "[redacted_phone]"
+
+
+def test_rpa_real_availability_normalizes_slots(monkeypatch) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def fake_urlopen(req, timeout):
+        captured.append({"url": req.full_url, "payload": json.loads(req.data.decode())})
+        return FakeResponse(
+            {
+                "date": "08/07/2026",
+                "dateISO": "2026-07-08",
+                "dateReadable": "miercoles, 8 de julio",
+                "slots": ["12:30"],
+            }
+        )
+
+    monkeypatch.setattr(rpa_appointments.request, "urlopen", fake_urlopen)
+    client = RPAAppointmentClient(
+        Settings(OPENAI_API_KEY="", DATABASE_URL="", RPA_DRY_RUN=False)
+    )
+
+    result = client.search_availability(
+        {"clinic": "santa_isabel", "service": "quiropodia", "limit": 1}
+    )
+
+    assert captured[0]["url"].endswith("/appointments/availability/search")
+    assert captured[0]["payload"]["preference"] == "todos"
+    assert result.status == "success"
+    slot = result.data["slots"][0]
+    assert slot["slot_id"] == "2026-07-08T12:30"
+    assert slot["date"] == "08/07/2026"
+    assert slot["time"] == "12:30"
+    assert slot["address"]
+
+
+def test_rpa_real_create_success_allows_confirmation(monkeypatch) -> None:
+    def fake_urlopen(req, timeout):
+        return FakeResponse(
+            {"success": True, "message": "Cita creada: Ana Perez el 10/07/2026 a las 16:00"}
+        )
+
+    monkeypatch.setattr(rpa_appointments.request, "urlopen", fake_urlopen)
+    client = RPAAppointmentClient(
+        Settings(OPENAI_API_KEY="", DATABASE_URL="", RPA_DRY_RUN=False)
+    )
+    result = client.create_appointment(
+        {
+            "clinic": "santa_isabel",
+            "service": "quiropodia",
+            "selected_slot": {
+                "slot_id": "2026-07-10T16:00",
+                "date": "10/07/2026",
+                "dateISO": "2026-07-10",
+                "time": "16:00",
+            },
+            "patient": {
+                "first_name": "Ana",
+                "last_names": "Perez",
+                "phone": "600000003",
+            },
+        }
+    )
+    action = ConversationAction(
+        action_type="call_tool",
+        reply_intent="create_appointment",
+        reply_key="vedruna_creating_appointment",
+        requires_tool=True,
+        tool_name="rpa_create_appointment",
+        metadata={"vedruna_flow": "create_appointment"},
+    )
+
+    reconciled = reconcile_tool_results(action, [result])
+
+    assert result.status == "success"
+    assert result.data["ok"] is True
+    assert result.data["dry_run"] is False
+    assert result.data["reminder"]["template"] == "appointment_reminder_24h"
+    assert reconciled.reply_key == "vedruna_confirm_appointment"
+
+
+def test_rpa_real_create_failure_blocks_confirmation(monkeypatch) -> None:
+    def fake_urlopen(req, timeout):
+        return FakeResponse({"success": False, "message": "No disponible"})
+
+    monkeypatch.setattr(rpa_appointments.request, "urlopen", fake_urlopen)
+    client = RPAAppointmentClient(
+        Settings(OPENAI_API_KEY="", DATABASE_URL="", RPA_DRY_RUN=False)
+    )
+    result = client.create_appointment(
+        {
+            "clinic": "santa_isabel",
+            "service": "quiropodia",
+            "selected_slot": {
+                "date": "10/07/2026",
+                "dateISO": "2026-07-10",
+                "time": "16:00",
+            },
+            "patient": {
+                "first_name": "Ana",
+                "last_names": "Perez",
+                "phone": "600000003",
+            },
+        }
+    )
+
+    assert result.status == "failed"
+    assert result.data["success"] is False
+
+
+def test_rpa_cancel_and_reschedule_send_idcita(monkeypatch) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def fake_urlopen(req, timeout):
+        captured.append({"url": req.full_url, "payload": json.loads(req.data.decode())})
+        return FakeResponse({"success": True, "message": "ok"})
+
+    monkeypatch.setattr(rpa_appointments.request, "urlopen", fake_urlopen)
+    client = RPAAppointmentClient(
+        Settings(OPENAI_API_KEY="", DATABASE_URL="", RPA_DRY_RUN=False)
+    )
+
+    client.cancel_appointment({"idCita": "52549", "phone": "600000001"})
+    client.reschedule_appointment(
+        {
+            "idCita": "52550",
+            "name": "Maria Prueba",
+            "phone": "600000002",
+            "service": "estudio_biomecanico",
+            "new_slot": {
+                "date": "10/07/2026",
+                "dateISO": "2026-07-10",
+                "time": "15:30",
+            },
+        }
+    )
+
+    assert captured[0]["payload"] == {"idCita": "52549", "phone": "600000001"}
+    assert captured[1]["payload"]["idCita"] == "52550"
+    assert captured[1]["payload"]["type"] == "estudio"
+
+
+def test_rpa_mutua_mapping_sanitas_and_generali(monkeypatch) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def fake_urlopen(req, timeout):
+        captured.append(json.loads(req.data.decode()))
+        return FakeResponse({"success": True, "message": "ok"})
+
+    monkeypatch.setattr(rpa_appointments.request, "urlopen", fake_urlopen)
+    client = RPAAppointmentClient(
+        Settings(OPENAI_API_KEY="", DATABASE_URL="", RPA_DRY_RUN=False)
+    )
+    base = {
+        "clinic": "madre_vedruna",
+        "service": "podologia",
+        "selected_slot": {
+            "date": "10/07/2026",
+            "dateISO": "2026-07-10",
+            "time": "16:00",
+        },
+        "patient": {"first_name": "Lucas", "last_names": "Prueba", "phone": "600000005"},
+        "insurance_type": "seguro",
+    }
+
+    client.create_appointment({**base, "insurance_provider": "sanitas"})
+    client.create_appointment({**base, "insurance_provider": "generali"})
+
+    assert captured[0]["idMutua"] == 1
+    assert captured[1]["idMutua"] == 12
+
+
+def test_voice_transfer_disabled_does_not_call_twilio() -> None:
+    handler = VoiceTransferHandler(
+        Settings(OPENAI_API_KEY="", DATABASE_URL="", VOICE_TRANSFER_ENABLED=False)
+    )
+    result = handler.execute(
+        ToolCallRequest(
+            name="voice_transfer_call",
+            arguments={"call_sid": "CA1", "phone_number": "976582768"},
+        ),
+        {},
+    )
+
+    assert result.status == "success"
+    assert result.data["transfer_enabled"] is False
+    assert result.data["real_transfer_executed"] is False
+
+
+def test_voice_transfer_enabled_uses_twilio_rest_with_mock(monkeypatch) -> None:
+    captured: list[str] = []
+
+    def fake_urlopen(req, timeout):
+        captured.append(req.full_url)
+        return FakeResponse({"sid": "CA1"})
+
+    monkeypatch.setattr(rpa_appointments.request, "urlopen", fake_urlopen)
+    handler = VoiceTransferHandler(
+        Settings(
+            OPENAI_API_KEY="",
+            DATABASE_URL="",
+            VOICE_TRANSFER_ENABLED=True,
+            TWILIO_ACCOUNT_SID="AC-test",
+            TWILIO_AUTH_TOKEN="token-test",
+        )
+    )
+
+    result = handler.execute(
+        ToolCallRequest(
+            name="voice_transfer_call",
+            arguments={"call_sid": "CA1", "phone_number": "976582768"},
+        ),
+        {},
+    )
+
+    assert result.status == "success"
+    assert result.data["real_transfer_executed"] is True
+    assert captured[0].endswith("/Calls/CA1.json")

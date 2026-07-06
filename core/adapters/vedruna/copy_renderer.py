@@ -150,7 +150,7 @@ def _render_text(
     if reply_key == "vedruna_human_handoff":
         return "Paso tu consulta al equipo para que te contesten lo antes posible."
     if reply_key == "vedruna_voice_transfer":
-        return "Te paso con la clinica para que puedan atenderte directamente."
+        return _render_voice_transfer(tool_result, context)
     if reply_key == "vedruna_ask_phone_for_lookup":
         return "Dime el telefono asociado a la cita, por favor."
     if reply_key == "vedruna_lookup_recall":
@@ -229,10 +229,13 @@ def _render_recall(tool_result: ToolResult | None) -> str:
     if not appointment:
         return "No he encontrado una cita con esos datos."
     start = _format_datetime(appointment.get("start"))
+    if appointment.get("dateReadable") and appointment.get("time"):
+        start = f"{appointment.get('dateReadable')} a las {appointment.get('time')}"
     clinic = appointment.get("clinic")
+    address = appointment.get("address") or clinic_address(clinic)
     return (
         f"Tienes una cita el {start} en la clinica {clinic_label(clinic)}, "
-        f"en {clinic_address(clinic)}."
+        f"en {address}."
     )
 
 
@@ -257,3 +260,17 @@ def _format_datetime(value: Any) -> str:
     except ValueError:
         return value
     return parsed.strftime("%d/%m/%Y a las %H:%M")
+
+
+def _render_voice_transfer(
+    tool_result: ToolResult | None,
+    context: ConversationState,
+) -> str:
+    data = tool_result.data if tool_result else {}
+    phone = clinic_phone(context.slots.get("clinic") or Clinic.MADRE_VEDRUNA.value)
+    if data.get("transfer_enabled") is False:
+        return (
+            "Necesitas hablar con la clinica. No voy a confirmar una transferencia real "
+            f"desde este entorno; llama al {phone} para que te atiendan directamente."
+        )
+    return "Te paso con la clinica para que puedan atenderte directamente."

@@ -94,10 +94,15 @@ def interpret_vedruna_message(
         target_slots["patient_first_name"] = {"slot": "patient_first_name"}
         target_slots["patient_last_names"] = {"slot": "patient_last_names"}
 
-    selected_slot_id = _selected_slot_from_message(message, context)
-    if selected_slot_id:
-        slots["selected_slot_id"] = selected_slot_id
+    selected_slot = _selected_slot_from_message(message, context)
+    if selected_slot:
+        slots.update(selected_slot)
+        selected_slot_id = selected_slot.get("selected_slot_id")
         target_slots["selected_slot_id"] = {"slot": "selected_slot_id"}
+        if selected_slot_id:
+            target_slots["selected_slot_date"] = {"slot": "selected_slot_date"}
+            target_slots["selected_slot_date_iso"] = {"slot": "selected_slot_date_iso"}
+            target_slots["selected_slot_time"] = {"slot": "selected_slot_time"}
 
     if _looks_like_consultation_reason(normalized, service):
         slots.setdefault("consultation_reason", message.text.strip())
@@ -111,6 +116,8 @@ def interpret_vedruna_message(
     if intent == "urgent_request":
         signals.append("urgent_request")
         tone_hints.append("urgent")
+        slots["urgent"] = True
+        target_slots["urgent"] = {"slot": "urgent"}
     if intent == "correction":
         signals.append("correction")
         entities["correction_slot_names"] = list(slots)
@@ -279,7 +286,7 @@ def _extract_name(text: str) -> tuple[str, str | None] | None:
 def _selected_slot_from_message(
     message: IncomingMessage,
     context: dict[str, object],
-) -> str | None:
+) -> dict[str, Any] | None:
     dtmf = message.media.get("dtmf") if isinstance(message.media, dict) else None
     normalized = normalize_text(message.text)
     index: int | None = None
@@ -297,8 +304,13 @@ def _selected_slot_from_message(
         if isinstance(offered, list) and 0 < index <= len(offered):
             candidate = offered[index - 1]
             if isinstance(candidate, dict) and candidate.get("slot_id"):
-                return str(candidate["slot_id"])
-    return f"selected_option_{index}"
+                return {
+                    "selected_slot_id": str(candidate["slot_id"]),
+                    "selected_slot_date": candidate.get("date"),
+                    "selected_slot_date_iso": candidate.get("dateISO"),
+                    "selected_slot_time": candidate.get("time"),
+                }
+    return {"selected_slot_id": f"selected_option_{index}"}
 
 
 def _looks_like_consultation_reason(normalized: str, service: str | None) -> bool:

@@ -28,6 +28,7 @@ from core.nlu.schemas import NLUInterpreter, NLUResult
 from core.observability.events import EventRecorder
 from core.outbox import MemoryOutbox, Outbox, OutboxMessage
 from core.policy.global_intents import resolve_global_intent
+from core.router.hybrid import map_policy_to_hybrid_decision
 from core.tools.executor import ToolExecutor
 from core.tools.registry import ToolRegistry
 from core.tools.schemas import ToolDefinition, ToolHandler
@@ -84,6 +85,7 @@ class ConversationOrchestrator:
         state = state_before
         outbox_kind: str = "suppressed"
         loop_prevented = False
+        policy_tool_name: str | None = None
 
         message = self._normalize_inbound(message)
         self._record_event(
@@ -143,6 +145,7 @@ class ConversationOrchestrator:
                 ignored_slot_reasons={},
                 action_type="no_reply_human_mode",
                 policy_reason="human_mode_suppressed",
+                policy_tool_name=None,
                 render_key="human_mode_suppressed",
                 outbox_kind="suppressed",
                 loop_prevented=False,
@@ -304,6 +307,7 @@ class ConversationOrchestrator:
                 {"reply_key": action.reply_key},
             )
 
+        policy_tool_name = action.tool_name
         if action.requires_tool and action.tool_name:
             with _measure(timings, "tools_ms"):
                 tool_results.append(
@@ -441,6 +445,7 @@ class ConversationOrchestrator:
             ignored_slot_reasons=ignored_slot_reasons,
             action_type=action.action_type,
             policy_reason=action.reply_intent,
+            policy_tool_name=policy_tool_name,
             render_key=rendered.reply_key,
             outbox_kind=outbox_kind,
             loop_prevented=loop_prevented,
@@ -620,6 +625,7 @@ class ConversationOrchestrator:
         ignored_slot_reasons: dict[str, str],
         action_type: str | None,
         policy_reason: str | None,
+        policy_tool_name: str | None,
         render_key: str | None,
         outbox_kind: str,
         loop_prevented: bool,
@@ -682,6 +688,14 @@ class ConversationOrchestrator:
             activeFlowAfter=state_after.active_flow or state_after.current_flow,
             policyAction=action_type,
             policyReason=policy_reason,
+            hybridRoutingDecision=map_policy_to_hybrid_decision(
+                action_type=action_type,
+                reply_intent=policy_reason,
+                reply_key=render_key,
+                nlu_intent=nlu_result.intent if nlu_result else None,
+                nlu_global_intent=nlu_result.global_intent if nlu_result else None,
+                tool_name=policy_tool_name,
+            ),
             renderKey=render_key,
             outboxKind=outbox_kind,
             legacyBypassUsed=False,
