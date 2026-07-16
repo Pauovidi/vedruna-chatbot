@@ -64,6 +64,10 @@ class Settings(BaseSettings):
         ),
         alias="CONVERSATION_RELAY_WELCOME_GREETING",
     )
+    elevenlabs_custom_llm_api_key: str | None = Field(
+        default=None,
+        alias="ELEVENLABS_CUSTOM_LLM_API_KEY",
+    )
     voice_transfer_enabled: bool = Field(default=False, alias="VOICE_TRANSFER_ENABLED")
     admin_panel_api_key: str | None = Field(default=None, alias="ADMIN_PANEL_API_KEY")
     rpa_base_url: str = Field(
@@ -131,6 +135,9 @@ class Settings(BaseSettings):
                 self.conversation_relay_tts_provider
             ),
             "conversation_relay_voice_present": bool(self.conversation_relay_voice),
+            "elevenlabs_custom_llm_api_key_present": bool(
+                self.elevenlabs_custom_llm_api_key
+            ),
             "voice_transfer_enabled": self.voice_transfer_enabled,
             "rpa_base_url_present": bool(self.rpa_base_url),
             "rpa_api_key_present": bool(self.rpa_api_key),
