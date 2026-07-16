@@ -30,6 +30,13 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          labels: |
+            org.opencontainers.image.source=https://github.com/Pauovidi/vedruna-chatbot
           tags: |
             ghcr.io/pauovidi/vedruna-chatbot:latest
             ghcr.io/pauovidi/vedruna-chatbot:${{ github.sha }}
+
+      - name: Make package public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api --method PATCH /user/packages/container/vedruna-chatbot -f visibility=public
