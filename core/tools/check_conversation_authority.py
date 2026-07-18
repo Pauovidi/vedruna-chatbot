@@ -74,10 +74,12 @@ RULES = (
 
 SKIP_DIRS = {
     ".git",
+    ".venv",
     ".pytest_cache",
     ".ruff_cache",
     "__pycache__",
     "devestial_conversation_core_openai.egg-info",
+    "venv",
 }
 
 

@@ -207,10 +207,10 @@ def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) 
         return "provide_patient_name"
     if slots.get("date_preference") or slots.get("time_preference"):
         return "provide_date_preference"
-    if any(term in normalized for term in ["hola", "buenos dias", "buenas"]):
-        return "greeting"
     if any(term in normalized for term in ["cita", "reservar", "quiero ir", "consulta"]):
         return "book_appointment"
+    if any(term in normalized for term in ["hola", "buenos dias", "buenas"]):
+        return "greeting"
     current_flow = context.get("active_flow") or context.get("current_flow")
     if current_flow == "vedruna_appointment":
         return "book_appointment"

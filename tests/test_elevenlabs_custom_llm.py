@@ -96,6 +96,26 @@ def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     assert response.text.endswith("data: [DONE]\n\n")
 
 
+def test_custom_llm_greeting_with_booking_request_starts_booking(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    response = _request(client, text="Hola, quiero pedir una cita")
+    assert response.status_code == 200
+    assert "Madre Vedruna" in response.text
+    assert "Santa Isabel" in response.text
+
+
+def test_custom_llm_santa_isabel_insurance_is_particular_only(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    response = _request(
+        client,
+        text="Quiero cita en Santa Isabel y tengo Sanitas",
+        conversation_id="conv-santa-insurance",
+    )
+    assert response.status_code == 200
+    assert "particular" in response.text.lower()
+    assert "que necesitas" not in response.text.lower()
+
+
 def test_custom_llm_preserves_state_and_dry_run_blocks_real_booking(monkeypatch) -> None:
     client = _client(monkeypatch)
     conversation_id = "conv-booking"

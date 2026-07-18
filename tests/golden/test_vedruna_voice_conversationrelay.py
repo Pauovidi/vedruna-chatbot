@@ -35,6 +35,31 @@ def test_voice_price_with_clinic_transfers() -> None:
     assert "transferencia real" in result.reply_text.lower()
 
 
+def test_voice_greeting_with_booking_request_asks_clinic() -> None:
+    orchestrator, _store = make_vedruna_orchestrator()
+    result = turn(
+        orchestrator,
+        "Hola, quiero pedir una cita",
+        conversation_id="voice-greeting-booking",
+        channel="voice",
+    )
+    assert result.reply_key == "vedruna_ask_clinic"
+    assert "Madre Vedruna" in result.reply_text
+    assert "Santa Isabel" in result.reply_text
+
+
+def test_voice_santa_isabel_insurance_precedes_service_question() -> None:
+    orchestrator, _store = make_vedruna_orchestrator()
+    result = turn(
+        orchestrator,
+        "Quiero cita en Santa Isabel y tengo Sanitas",
+        conversation_id="voice-santa-insurance",
+        channel="voice",
+    )
+    assert result.reply_key == "vedruna_santa_isabel_particular_only"
+    assert "particular" in result.reply_text.lower()
+
+
 def test_voice_dtmf_selects_first_offered_slot() -> None:
     orchestrator, store = make_vedruna_orchestrator()
     conversation_id = "voice-dtmf"

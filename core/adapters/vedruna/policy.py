@@ -84,6 +84,11 @@ def _booking_action(context: ConversationState, slots: dict[str, Any]) -> Conver
     service = slots.get("service")
     if not clinic:
         return _ask("vedruna_ask_clinic", "clinic")
+    if clinic == Clinic.SANTA_ISABEL.value and slots.get("insurance_type") == "seguro":
+        return _reply(
+            "vedruna_santa_isabel_particular_only",
+            state_updates=_flow("vedruna_appointment"),
+        )
     if not service:
         reply_key = (
             "vedruna_ask_service_madre"
@@ -91,11 +96,6 @@ def _booking_action(context: ConversationState, slots: dict[str, Any]) -> Conver
             else "vedruna_ask_service_santa"
         )
         return _ask(reply_key, "service")
-    if clinic == Clinic.SANTA_ISABEL.value and slots.get("insurance_type") == "seguro":
-        return _reply(
-            "vedruna_santa_isabel_particular_only",
-            state_updates=_flow("vedruna_appointment"),
-        )
     if not service_allowed(clinic, service):
         return _reply("vedruna_service_not_allowed", state_updates=_flow("vedruna_appointment"))
     if requires_insurance(clinic) and not slots.get("insurance_type"):
