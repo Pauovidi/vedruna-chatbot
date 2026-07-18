@@ -94,6 +94,10 @@ def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "Clinica Madre Vedruna" in response.text
     assert response.text.endswith("data: [DONE]\n\n")
+    events = _events(response)
+    assert events[0]["choices"][0]["delta"] == {"role": "assistant"}
+    assert events[1]["choices"][0]["delta"]["content"]
+    assert events[-1]["choices"][0]["finish_reason"] == "stop"
 
 
 def test_custom_llm_greeting_with_booking_request_starts_booking(monkeypatch) -> None:

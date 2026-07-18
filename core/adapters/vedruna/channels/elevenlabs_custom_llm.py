@@ -64,7 +64,15 @@ def completion_events(
                 completion_id,
                 created,
                 model,
-                {"role": "assistant", "content": result.reply_text},
+                {"role": "assistant"},
+            )
+        )
+        yield _sse(
+            _chunk(
+                completion_id,
+                created,
+                model,
+                {"content": result.reply_text},
             )
         )
         yield _sse(
