@@ -128,7 +128,7 @@ def test_custom_llm_streams_before_running_core() -> None:
     assert calls == ["run"]
 
 
-def test_custom_llm_sends_sse_heartbeats_while_core_is_running() -> None:
+def test_custom_llm_sends_openai_progress_chunks_while_core_is_running() -> None:
     release_result = Event()
 
     def build_result() -> ChatTurnResult:
@@ -144,7 +144,7 @@ def test_custom_llm_sends_sse_heartbeats_while_core_is_running() -> None:
 
     first_event = next(events)
     assert '"content": "Un momento, por favor... "' in first_event
-    assert next(events) == ": keep-alive\n\n"
+    assert '"content": ""' in next(events)
     release_result.set()
     assert '"content": "hola"' in next(events)
 

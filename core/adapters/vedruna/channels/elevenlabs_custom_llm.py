@@ -40,8 +40,8 @@ def completion_events(
             {"role": "assistant", "content": render_vedruna_stream_buffer()},
         )
     )
-    # Keep the SSE transport alive while the core persists its audit events.
-    # Comments are standard SSE heartbeats and are not spoken or rendered.
+    # Keep the transport alive with OpenAI-compatible chunks while the core
+    # persists its audit events. ElevenLabs rejects SSE comment heartbeats.
     result_queue: Queue[ChatTurnResult | Exception] = Queue(maxsize=1)
 
     def run_core() -> None:
@@ -55,7 +55,7 @@ def completion_events(
         try:
             result_or_error = result_queue.get(timeout=heartbeat_interval_seconds)
         except Empty:
-            yield ": keep-alive\n\n"
+            yield _sse(_chunk(completion_id, created, model, {"content": ""}))
             continue
         if isinstance(result_or_error, Exception):
             raise result_or_error
