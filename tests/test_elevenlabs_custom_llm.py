@@ -95,7 +95,11 @@ def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     assert "Clinica Madre Vedruna" in response.text
     assert response.text.endswith("data: [DONE]\n\n")
     events = _events(response)
-    assert events[0]["choices"][0]["delta"] == {"role": "assistant"}
+    first_choice = events[0]["choices"][0]
+    assert first_choice["delta"]["role"] == "assistant"
+    assert first_choice["delta"]["content"] == ""
+    assert first_choice["logprobs"] is None
+    assert events[0]["system_fingerprint"] is None
     assert events[1]["choices"][0]["delta"]["content"]
     assert events[-1]["choices"][0]["finish_reason"] == "stop"
 
