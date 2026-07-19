@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
@@ -58,6 +59,9 @@ class ConversationOrchestrator:
         self._trace_events_written = 0
         self._trace_event_log_ms = 0.0
         self._trace_best_effort = False
+        self._turn_event_buffer: ContextVar[
+            list[tuple[str, str, dict[str, Any]]] | None
+        ] = ContextVar("turn_event_buffer", default=None)
 
     def handle_turn(self, message: IncomingMessage) -> ChatTurnResult:
         self._begin_trace_counters()
@@ -151,6 +155,7 @@ class ConversationOrchestrator:
                 loop_prevented=False,
             )
             self._record_trace(message.conversation_id, trace)
+            self._flush_events()
             return ChatTurnResult(
                 conversation_id=message.conversation_id,
                 reply_text="",
@@ -451,6 +456,7 @@ class ConversationOrchestrator:
             loop_prevented=loop_prevented,
         )
         self._record_trace(message.conversation_id, trace)
+        self._flush_events()
         return ChatTurnResult(
             conversation_id=message.conversation_id,
             reply_text=rendered.text,
@@ -595,6 +601,7 @@ class ConversationOrchestrator:
         self._trace_events_written = 0
         self._trace_event_log_ms = 0.0
         self._trace_best_effort = False
+        self._turn_event_buffer.set([])
 
     def _record_event(
         self,
@@ -602,14 +609,32 @@ class ConversationOrchestrator:
         event_type: str,
         payload: dict[str, Any],
     ) -> None:
+        buffer = self._turn_event_buffer.get()
+        if buffer is None:
+            started = perf_counter()
+            try:
+                self.events.record(conversation_id, event_type, payload)
+                self._trace_events_written += 1
+            except Exception:
+                self._trace_best_effort = True
+            finally:
+                self._trace_event_log_ms += perf_counter() - started
+            return
+        buffer.append((conversation_id, event_type, payload))
+        self._trace_events_written += 1
+
+    def _flush_events(self) -> None:
+        buffer = self._turn_event_buffer.get()
+        if not buffer:
+            return
         started = perf_counter()
         try:
-            self.events.record(conversation_id, event_type, payload)
-            self._trace_events_written += 1
+            self.events.record_many(buffer)
         except Exception:
             self._trace_best_effort = True
         finally:
             self._trace_event_log_ms += perf_counter() - started
+            buffer.clear()
 
     def _record_trace(self, conversation_id: str, trace: AuthorityTurnTrace) -> None:
         self._record_event(

@@ -27,6 +27,14 @@ class EventRecorder:
     def record(self, conversation_id: str, event_type: str, payload: dict[str, Any]) -> None:
         self.store.record_event(conversation_id, event_type, redact_payload(payload))
 
+    def record_many(self, events: list[tuple[str, str, dict[str, Any]]]) -> None:
+        self.store.record_events(
+            [
+                (conversation_id, event_type, redact_payload(payload))
+                for conversation_id, event_type, payload in events
+            ]
+        )
+
     def list_for(self, conversation_id: str) -> list[Event]:
         return self.store.list_events(conversation_id)
 

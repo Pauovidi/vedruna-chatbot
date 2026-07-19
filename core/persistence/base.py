@@ -47,6 +47,12 @@ class ConversationStore(Protocol):
     ) -> None:
         ...
 
+    def record_events(
+        self,
+        events: list[tuple[str, str, dict[str, Any]]],
+    ) -> None:
+        ...
+
     def list_events(self, conversation_id: str) -> list[Event]:
         ...
 

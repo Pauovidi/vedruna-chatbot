@@ -102,6 +102,9 @@ class EventRecorderAdapter:
     def record(self, conversation_id: str, event_type: str, payload: dict[str, Any]) -> None:
         self._recorder.record(conversation_id, event_type, payload)
 
+    def record_many(self, events: list[tuple[str, str, dict[str, Any]]]) -> None:
+        self._recorder.record_many(events)
+
     def record_tool_call(
         self,
         conversation_id: str,

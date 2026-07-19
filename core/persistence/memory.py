@@ -81,6 +81,10 @@ class MemoryStore:
             )
         )
 
+    def record_events(self, events: list[tuple[str, str, dict[str, Any]]]) -> None:
+        for conversation_id, event_type, payload in events:
+            self.record_event(conversation_id, event_type, payload)
+
     def list_events(self, conversation_id: str) -> list[Event]:
         return [event for event in self.events if event.conversation_id == conversation_id]
 

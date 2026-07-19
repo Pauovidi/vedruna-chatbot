@@ -122,6 +122,22 @@ class SQLAlchemyConversationStore:
             )
             session.commit()
 
+    def record_events(self, events: list[tuple[str, str, dict[str, Any]]]) -> None:
+        if not events:
+            return
+        with self._session_factory() as session:
+            session.add_all(
+                [
+                    EventRecord(
+                        conversation_id=conversation_id,
+                        type=event_type,
+                        payload=redact_payload(payload),
+                    )
+                    for conversation_id, event_type, payload in events
+                ]
+            )
+            session.commit()
+
     def list_events(self, conversation_id: str) -> list[Event]:
         with self._session_factory() as session:
             stmt = (

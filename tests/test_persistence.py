@@ -49,13 +49,20 @@ def test_sqlite_persists_state_messages_and_events_between_instances(tmp_path: P
     state.active_topic = "quote_lead"
     first.save_state(state)
     first.append_message("persist-1", "user", "hola", client_id="default")
-    first.record_event("persist-1", "example", {"api_key": "secret"})
+    first.record_events(
+        [
+            ("persist-1", "example", {"api_key": "secret"}),
+            ("persist-1", "example_follow_up", {}),
+        ]
+    )
 
     second = SQLAlchemyConversationStore(database_url)
     loaded = second.load_state("persist-1", "default")
     assert loaded.active_topic == "quote_lead"
     assert second.list_messages("persist-1")[0]["text"] == "hola"
-    assert second.list_events("persist-1")[0].payload["api_key"] == "[redacted]"
+    events = second.list_events("persist-1")
+    assert events[0].payload["api_key"] == "[redacted]"
+    assert [event.type for event in events] == ["example", "example_follow_up"]
 
 
 def test_inbound_persists_when_llm_fails() -> None:
