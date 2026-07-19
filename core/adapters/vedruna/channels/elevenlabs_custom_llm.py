@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections.abc import Callable, Iterator
+from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
 from core.adapters.vedruna.copy_renderer import render_vedruna_stream_buffer
 from core.adapters.vedruna.domain_schema import Clinic, clinic_phone
 from core.llm.schemas import ChatTurnResult
+
+logger = logging.getLogger(__name__)
 
 
 def latest_user_text(messages: list[dict[str, Any]]) -> str:
@@ -39,7 +43,27 @@ def completion_events(
         )
     # Keep the core and its persistence lifecycle on the request thread. A
     # background worker can reuse a database session from a previous turn.
-    result = result_factory()
+    core_started = perf_counter()
+    try:
+        result = result_factory()
+    except Exception:
+        logger.error(
+            "elevenlabs_core_turn_failed elapsed_ms=%d",
+            round((perf_counter() - core_started) * 1000),
+        )
+        raise
+    if result is not None:
+        trace = result.authority_trace if isinstance(result.authority_trace, dict) else {}
+        timing = trace.get("timing", {})
+        logger.info(
+            "elevenlabs_core_turn_complete elapsed_ms=%d reply_key=%s "
+            "persistence_ms=%s load_state_ms=%s tools_ms=%s",
+            round((perf_counter() - core_started) * 1000),
+            result.reply_key,
+            timing.get("persistenceMs"),
+            timing.get("loadStateMs"),
+            timing.get("toolsMs"),
+        )
     if result is None:
         yield _sse(
             _chunk(

@@ -79,7 +79,11 @@ The internal adapter normalizes the real response:
 POST /appointments/create
 ```
 
-The adapter sends `name`, `phone`, `date`, `time`, `type`, and `is_new_patient=true` unless a known-patient flow explicitly says otherwise. For insurance:
+The adapter sends `name`, `phone`, `date`, `time`, `type`, `observaciones`, and
+`is_new_patient=true` unless a known-patient flow explicitly says otherwise. The
+deployed APClinic RPA prepends `CITA IA - ` to `observaciones`, so the adapter
+sends the agenda body `{nombre} {apellidos} {telefono} {motivo}` without a
+second prefix. For insurance:
 
 - Sanitas -> `mutua=true`, `idMutua=1`
 - Generali -> `mutua=true`, `idMutua=12`

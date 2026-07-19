@@ -391,11 +391,24 @@ def _create_payload(arguments: dict[str, Any]) -> dict[str, Any] | None:
         "time": time_value,
         "type": _rpa_service_type(str(arguments.get("service") or slot.get("service") or "")),
     }
+    observations = _rpa_observations(arguments, name, phone)
+    if observations:
+        # APClinic's RPA adds the "CITA IA - " prefix when it writes this field.
+        payload["observaciones"] = observations
     id_mutua = _mutua_id(arguments.get("insurance_provider"))
     if id_mutua is not None and arguments.get("insurance_type") == "seguro":
         payload["mutua"] = True
         payload["idMutua"] = id_mutua
     return payload
+
+
+def _rpa_observations(arguments: dict[str, Any], name: str, phone: str) -> str:
+    agenda_title = str(arguments.get("agenda_title") or "").strip()
+    prefix = "cita IA "
+    if agenda_title.casefold().startswith(prefix.casefold()):
+        return agenda_title[len(prefix) :].strip()
+    reason = str(arguments.get("consultation_reason") or "").strip()
+    return " ".join(part for part in (name, phone, reason) if part).strip()
 
 
 def _create_result(arguments: dict[str, Any], data: dict[str, Any]) -> ToolResult:

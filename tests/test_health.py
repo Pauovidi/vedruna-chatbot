@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+import api.main as main_module
 from api.main import create_app
 from core.config import Settings, get_settings
 
@@ -22,3 +23,13 @@ def test_production_without_durable_db_fails() -> None:
     settings = Settings(APP_ENV="production", DATABASE_URL="")
     with pytest.raises(RuntimeError):
         settings.assert_production_ready()
+
+
+def test_app_warms_orchestrator_before_serving(monkeypatch: pytest.MonkeyPatch) -> None:
+    warmed: list[bool] = []
+
+    monkeypatch.setattr(main_module, "get_orchestrator", lambda: warmed.append(True))
+
+    with TestClient(create_app()) as client:
+        assert warmed == [True]
+        assert client.get("/healthz").status_code == 200

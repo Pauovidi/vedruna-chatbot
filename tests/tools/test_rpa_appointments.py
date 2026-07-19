@@ -82,7 +82,10 @@ def test_rpa_real_availability_normalizes_slots(monkeypatch) -> None:
 
 
 def test_rpa_real_create_success_allows_confirmation(monkeypatch) -> None:
+    captured: list[dict[str, Any]] = []
+
     def fake_urlopen(req, timeout):
+        captured.append(json.loads(req.data.decode()))
         return FakeResponse(
             {"success": True, "message": "Cita creada: Ana Perez el 10/07/2026 a las 16:00"}
         )
@@ -106,6 +109,8 @@ def test_rpa_real_create_success_allows_confirmation(monkeypatch) -> None:
                 "last_names": "Perez",
                 "phone": "600000003",
             },
+            "consultation_reason": "dolor en el talon",
+            "agenda_title": "cita IA Ana Perez 600000003 dolor en el talon",
         }
     )
     action = ConversationAction(
@@ -123,6 +128,9 @@ def test_rpa_real_create_success_allows_confirmation(monkeypatch) -> None:
     assert result.data["ok"] is True
     assert result.data["dry_run"] is False
     assert result.data["reminder"]["template"] == "appointment_reminder_24h"
+    assert captured[0]["observaciones"] == (
+        "Ana Perez 600000003 dolor en el talon"
+    )
     assert reconciled.reply_key == "vedruna_confirm_appointment"
 
 
