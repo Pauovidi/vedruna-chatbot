@@ -501,6 +501,20 @@ class ConversationOrchestrator:
             )
             return deterministic_result, metrics
 
+        if message.media.get("source") == "elevenlabs_custom_llm":
+            # ElevenLabs has a short end-to-end custom-LLM deadline. This channel
+            # already enters through a structured Vedruna interpreter, so avoid a
+            # second remote NLU round trip and preserve the core policy pipeline.
+            self._record_event(
+                message.conversation_id,
+                "nlu_elevenlabs_deterministic_fast_path_used",
+                {
+                    "intent": deterministic_result.intent,
+                    "global_intent": deterministic_result.global_intent,
+                },
+            )
+            return deterministic_result, metrics
+
         if not self.settings.conversational_reply_enabled:
             self._record_event(message.conversation_id, "llm_disabled", {})
             return deterministic_result, metrics

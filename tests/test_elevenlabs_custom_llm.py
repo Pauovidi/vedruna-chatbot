@@ -15,6 +15,7 @@ from api.dependencies import (
 from api.main import app
 from core.adapters.vedruna.channels.elevenlabs_custom_llm import completion_events
 from core.config import get_settings
+from core.llm.openai_provider import OpenAIProvider
 from core.llm.schemas import ChatTurnResult
 
 
@@ -28,9 +29,9 @@ def _reset_dependencies() -> None:
     get_settings.cache_clear()
 
 
-def _client(monkeypatch) -> TestClient:
+def _client(monkeypatch, *, openai_api_key: str = "") -> TestClient:
     monkeypatch.setenv("ELEVENLABS_CUSTOM_LLM_API_KEY", "test-custom-llm-key")
-    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("OPENAI_API_KEY", openai_api_key)
     monkeypatch.setenv("DATABASE_URL", "")
     monkeypatch.setenv("RPA_DRY_RUN", "true")
     monkeypatch.setenv("VOICE_TRANSFER_ENABLED", "false")
@@ -124,6 +125,20 @@ def test_custom_llm_streams_before_running_core() -> None:
     assert calls == []
     next(events)
     assert calls == ["run"]
+
+
+def test_custom_llm_uses_structured_nlu_without_remote_round_trip(monkeypatch) -> None:
+    def remote_nlu_must_not_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("ElevenLabs custom LLM must not invoke remote NLU")
+
+    monkeypatch.setattr(OpenAIProvider, "interpret", remote_nlu_must_not_run)
+    client = _client(monkeypatch, openai_api_key="sk-test")
+
+    response = _request(client, text="Hola, quiero pedir una cita")
+
+    assert response.status_code == 200
+    assert "Madre Vedruna" in response.text
+    assert "Santa Isabel" in response.text
 
 
 def test_custom_llm_greeting_with_booking_request_starts_booking(monkeypatch) -> None:
