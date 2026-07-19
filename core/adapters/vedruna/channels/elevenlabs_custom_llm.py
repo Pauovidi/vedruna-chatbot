@@ -12,7 +12,7 @@ from core.adapters.vedruna.copy_renderer import render_vedruna_stream_buffer
 from core.adapters.vedruna.domain_schema import Clinic, clinic_phone
 from core.llm.schemas import ChatTurnResult
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 def latest_user_text(messages: list[dict[str, Any]]) -> str:
