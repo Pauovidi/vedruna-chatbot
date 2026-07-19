@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Iterator
-from queue import Empty, Queue
-from threading import Thread
 from typing import Any
 from uuid import uuid4
 
@@ -26,7 +24,6 @@ def completion_events(
     *,
     model: str,
     available_tools: list[dict[str, Any]],
-    heartbeat_interval_seconds: float = 1.0,
 ) -> Iterator[str]:
     completion_id = f"chatcmpl-{uuid4().hex}"
     created = int(time.time())
@@ -40,27 +37,9 @@ def completion_events(
             {"role": "assistant", "content": render_vedruna_stream_buffer()},
         )
     )
-    # Keep the transport alive with OpenAI-compatible chunks while the core
-    # persists its audit events. ElevenLabs rejects SSE comment heartbeats.
-    result_queue: Queue[ChatTurnResult | Exception] = Queue(maxsize=1)
-
-    def run_core() -> None:
-        try:
-            result_queue.put(result_factory())
-        except Exception as exc:
-            result_queue.put(exc)
-
-    Thread(target=run_core, name="elevenlabs-core-turn", daemon=True).start()
-    while True:
-        try:
-            result_or_error = result_queue.get(timeout=heartbeat_interval_seconds)
-        except Empty:
-            yield _sse(_chunk(completion_id, created, model, {"content": ""}))
-            continue
-        if isinstance(result_or_error, Exception):
-            raise result_or_error
-        result = result_or_error
-        break
+    # Keep the core and its persistence lifecycle on the request thread. A
+    # background worker can reuse a database session from a previous turn.
+    result = result_factory()
     transfer = _transfer_tool_call(result, available_tools)
     if transfer:
         yield _sse(

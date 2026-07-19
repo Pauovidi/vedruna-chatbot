@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from threading import Event
 
 from fastapi.testclient import TestClient
 
@@ -126,27 +125,6 @@ def test_custom_llm_streams_before_running_core() -> None:
     assert calls == []
     next(events)
     assert calls == ["run"]
-
-
-def test_custom_llm_sends_openai_progress_chunks_while_core_is_running() -> None:
-    release_result = Event()
-
-    def build_result() -> ChatTurnResult:
-        release_result.wait()
-        return ChatTurnResult(conversation_id="conv-heartbeat", reply_text="hola")
-
-    events = completion_events(
-        build_result,
-        model="vedruna-core",
-        available_tools=[],
-        heartbeat_interval_seconds=0.001,
-    )
-
-    first_event = next(events)
-    assert '"content": "Un momento, por favor... "' in first_event
-    assert '"content": ""' in next(events)
-    release_result.set()
-    assert '"content": "hola"' in next(events)
 
 
 def test_custom_llm_uses_structured_nlu_without_remote_round_trip(monkeypatch) -> None:
