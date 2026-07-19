@@ -13,7 +13,9 @@ from api.dependencies import (
     get_store,
 )
 from api.main import app
+from core.adapters.vedruna.channels.elevenlabs_custom_llm import completion_events
 from core.config import get_settings
+from core.llm.schemas import ChatTurnResult
 
 
 def _reset_dependencies() -> None:
@@ -104,6 +106,25 @@ def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     assert events[-1]["choices"][0]["finish_reason"] == "stop"
 
 
+def test_custom_llm_streams_before_running_core() -> None:
+    calls: list[str] = []
+
+    def build_result() -> ChatTurnResult:
+        calls.append("run")
+        return ChatTurnResult(conversation_id="conv-latency", reply_text="hola")
+
+    events = completion_events(
+        build_result,
+        model="vedruna-core",
+        available_tools=[],
+    )
+    first_event = next(events)
+    assert '"role": "assistant"' in first_event
+    assert calls == []
+    next(events)
+    assert calls == ["run"]
+
+
 def test_custom_llm_greeting_with_booking_request_starts_booking(monkeypatch) -> None:
     client = _client(monkeypatch)
     response = _request(client, text="Hola, quiero pedir una cita")
@@ -162,7 +183,7 @@ def test_custom_llm_emits_elevenlabs_transfer_tool_call(monkeypatch) -> None:
     )
     assert response.status_code == 200
     events = _events(response)
-    tool_calls = events[0]["choices"][0]["delta"]["tool_calls"]
+    tool_calls = events[1]["choices"][0]["delta"]["tool_calls"]
     function = tool_calls[0]["function"]
     assert function["name"] == "transfer_to_number"
     arguments = json.loads(function["arguments"])

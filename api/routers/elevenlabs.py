@@ -41,18 +41,16 @@ def elevenlabs_chat_completions(
     stable_conversation_id = conversation_id or body.user_id
     if not stable_conversation_id:
         raise HTTPException(status_code=400, detail="missing_conversation_id")
-    result = get_orchestrator().handle_turn(
-        IncomingMessage(
-            channel="voice",
-            conversation_id=f"elevenlabs:{stable_conversation_id}",
-            client_id="vedruna",
-            text=latest_user_text(body.messages),
-            media={"source": "elevenlabs_custom_llm"},
-        )
+    message = IncomingMessage(
+        channel="voice",
+        conversation_id=f"elevenlabs:{stable_conversation_id}",
+        client_id="vedruna",
+        text=latest_user_text(body.messages),
+        media={"source": "elevenlabs_custom_llm"},
     )
     return StreamingResponse(
         completion_events(
-            result,
+            lambda: get_orchestrator().handle_turn(message),
             model=body.model,
             available_tools=body.tools,
         ),

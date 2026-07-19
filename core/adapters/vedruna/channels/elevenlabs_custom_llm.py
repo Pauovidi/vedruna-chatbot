@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 from uuid import uuid4
 
@@ -19,13 +19,24 @@ def latest_user_text(messages: list[dict[str, Any]]) -> str:
 
 
 def completion_events(
-    result: ChatTurnResult,
+    result_factory: Callable[[], ChatTurnResult],
     *,
     model: str,
     available_tools: list[dict[str, Any]],
 ) -> Iterator[str]:
     completion_id = f"chatcmpl-{uuid4().hex}"
     created = int(time.time())
+    # Send the OpenAI-compatible role chunk before running the core. ElevenLabs
+    # receives an immediate SSE response while the deterministic pipeline works.
+    yield _sse(
+        _chunk(
+            completion_id,
+            created,
+            model,
+            {"role": "assistant", "content": ""},
+        )
+    )
+    result = result_factory()
     transfer = _transfer_tool_call(result, available_tools)
     if transfer:
         yield _sse(
@@ -59,14 +70,6 @@ def completion_events(
             )
         )
     else:
-        yield _sse(
-            _chunk(
-                completion_id,
-                created,
-                model,
-                {"role": "assistant", "content": ""},
-            )
-        )
         yield _sse(
             _chunk(
                 completion_id,
