@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Iterator
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FutureTimeout
+from queue import Empty, Queue
+from threading import Thread
 from typing import Any
 from uuid import uuid4
 
@@ -42,14 +42,25 @@ def completion_events(
     )
     # Keep the SSE transport alive while the core persists its audit events.
     # Comments are standard SSE heartbeats and are not spoken or rendered.
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        result_future = executor.submit(result_factory)
-        while True:
-            try:
-                result = result_future.result(timeout=heartbeat_interval_seconds)
-                break
-            except FutureTimeout:
-                yield ": keep-alive\n\n"
+    result_queue: Queue[ChatTurnResult | Exception] = Queue(maxsize=1)
+
+    def run_core() -> None:
+        try:
+            result_queue.put(result_factory())
+        except Exception as exc:
+            result_queue.put(exc)
+
+    Thread(target=run_core, name="elevenlabs-core-turn", daemon=True).start()
+    while True:
+        try:
+            result_or_error = result_queue.get(timeout=heartbeat_interval_seconds)
+        except Empty:
+            yield ": keep-alive\n\n"
+            continue
+        if isinstance(result_or_error, Exception):
+            raise result_or_error
+        result = result_or_error
+        break
     transfer = _transfer_tool_call(result, available_tools)
     if transfer:
         yield _sse(
