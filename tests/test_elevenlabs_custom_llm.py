@@ -99,7 +99,7 @@ def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     events = _events(response)
     first_choice = events[0]["choices"][0]
     assert first_choice["delta"]["role"] == "assistant"
-    assert first_choice["delta"]["content"] == ""
+    assert first_choice["delta"]["content"].endswith("... ")
     assert first_choice["logprobs"] is None
     assert events[0]["system_fingerprint"] is None
     assert events[1]["choices"][0]["delta"]["content"]
@@ -120,6 +120,7 @@ def test_custom_llm_streams_before_running_core() -> None:
     )
     first_event = next(events)
     assert '"role": "assistant"' in first_event
+    assert '"content": "Un momento, por favor... "' in first_event
     assert calls == []
     next(events)
     assert calls == ["run"]

@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterator
 from typing import Any
 from uuid import uuid4
 
+from core.adapters.vedruna.copy_renderer import render_vedruna_stream_buffer
 from core.adapters.vedruna.domain_schema import Clinic, clinic_phone
 from core.llm.schemas import ChatTurnResult
 
@@ -26,14 +27,14 @@ def completion_events(
 ) -> Iterator[str]:
     completion_id = f"chatcmpl-{uuid4().hex}"
     created = int(time.time())
-    # Send the OpenAI-compatible role chunk before running the core. ElevenLabs
-    # receives an immediate SSE response while the deterministic pipeline works.
+    # Send CopyRenderer-owned buffer text before running the core. ElevenLabs
+    # requires visible buffer words for slow custom LLMs, not an empty chunk.
     yield _sse(
         _chunk(
             completion_id,
             created,
             model,
-            {"role": "assistant", "content": ""},
+            {"role": "assistant", "content": render_vedruna_stream_buffer()},
         )
     )
     result = result_factory()
