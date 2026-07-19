@@ -190,6 +190,32 @@ def test_custom_llm_understands_natural_service_confirmation(monkeypatch) -> Non
     assert "Es para podologia" not in response.text
 
 
+def test_custom_llm_understands_natural_patient_name_and_last_names(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    conversation_id = "conv-natural-patient-name"
+
+    for text in [
+        "Quiero una cita en Madre Vedruna",
+        "Si",
+        "Sanitas",
+    ]:
+        _request(client, text=text, conversation_id=conversation_id)
+
+    first_name = _request(
+        client,
+        text="Mi nombre es Prueba",
+        conversation_id=conversation_id,
+    )
+    assert "apellidos" in first_name.text.lower()
+
+    last_names = _request(
+        client,
+        text="Mis apellidos son De Ejemplo",
+        conversation_id=conversation_id,
+    )
+    assert "telefono" in last_names.text.lower()
+
+
 def test_custom_llm_santa_isabel_insurance_is_particular_only(monkeypatch) -> None:
     client = _client(monkeypatch)
     response = _request(

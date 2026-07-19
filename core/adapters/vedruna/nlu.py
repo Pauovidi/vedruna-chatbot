@@ -18,7 +18,11 @@ from core.tools.schemas import ToolDefinition
 
 PHONE_RE = re.compile(r"(?<!\d)(?:\+?34\s*)?(\d[\d\s().-]{7,}\d)(?!\d)")
 NAME_RE = re.compile(
-    r"\b(?:me llamo|soy)\s+([^\d\W_]+(?:\s+[^\d\W_]+){0,3})",
+    r"\b(?:me llamo|mi nombre es|mi nombre:|soy)\s+([^\d\W_]+(?:\s+[^\d\W_]+){0,3})",
+    re.IGNORECASE,
+)
+LAST_NAMES_RE = re.compile(
+    r"\b(?:mis apellidos(?:\s+son)?|mi apellido(?:\s+es)?)\s+([^\d\W_]+(?:\s+[^\d\W_]+){0,3})",
     re.IGNORECASE,
 )
 FAQ_INTENTS = {
@@ -100,6 +104,11 @@ def interpret_vedruna_message(
         if last_names:
             slots["patient_last_names"] = last_names
         target_slots["patient_first_name"] = {"slot": "patient_first_name"}
+        target_slots["patient_last_names"] = {"slot": "patient_last_names"}
+
+    last_names = _extract_last_names(message.text)
+    if last_names:
+        slots["patient_last_names"] = last_names
         target_slots["patient_last_names"] = {"slot": "patient_last_names"}
 
     selected_slot = _selected_slot_from_message(message, context)
@@ -211,7 +220,7 @@ def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) 
         return "choose_service"
     if slots.get("patient_phone"):
         return "provide_patient_phone"
-    if slots.get("patient_first_name"):
+    if slots.get("patient_first_name") or slots.get("patient_last_names"):
         return "provide_patient_name"
     if slots.get("date_preference") or slots.get("time_preference"):
         return "provide_date_preference"
@@ -289,6 +298,13 @@ def _extract_name(text: str) -> tuple[str, str | None] | None:
     if not parts:
         return None
     return parts[0].title(), " ".join(part.title() for part in parts[1:]) or None
+
+
+def _extract_last_names(text: str) -> str | None:
+    match = LAST_NAMES_RE.search(text)
+    if not match:
+        return None
+    return " ".join(part.title() for part in match.group(1).strip().split()) or None
 
 
 def _selected_slot_from_message(
