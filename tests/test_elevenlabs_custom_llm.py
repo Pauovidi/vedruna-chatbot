@@ -171,6 +171,47 @@ def test_custom_llm_greeting_with_booking_request_starts_booking(monkeypatch) ->
     assert "Santa Isabel" in response.text
 
 
+def test_custom_llm_understands_madre_vedruna_service_confirmation(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    conversation_id = "conv-madre-confirmation"
+
+    first = _request(
+        client,
+        text="Quiero una cita en Madre Vedruna",
+        conversation_id=conversation_id,
+    )
+    assert "Es para podologia" in first.text
+
+    response = _request(
+        client,
+        text="Si, y tengo Sanitas",
+        conversation_id=conversation_id,
+    )
+
+    assert response.status_code == 200
+    assert "Dime tu nombre" in response.text
+
+
+def test_custom_llm_understands_natural_service_confirmation(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    conversation_id = "conv-madre-natural-confirmation"
+
+    _request(
+        client,
+        text="Quiero una cita en Madre Vedruna",
+        conversation_id=conversation_id,
+    )
+    response = _request(
+        client,
+        text="Asi es",
+        conversation_id=conversation_id,
+    )
+
+    assert response.status_code == 200
+    assert "Sanitas" in response.text
+    assert "Es para podologia" not in response.text
+
+
 def test_custom_llm_santa_isabel_insurance_is_particular_only(monkeypatch) -> None:
     client = _client(monkeypatch)
     response = _request(
