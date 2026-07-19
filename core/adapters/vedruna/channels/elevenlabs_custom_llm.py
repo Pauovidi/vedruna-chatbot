@@ -12,34 +12,46 @@ from core.llm.schemas import ChatTurnResult
 
 
 def latest_user_text(messages: list[dict[str, Any]]) -> str:
-    for message in reversed(messages):
-        if message.get("role") != "user":
-            continue
-        return _message_text(message.get("content"))
-    return "hola"
+    if not messages or messages[-1].get("role") != "user":
+        return ""
+    return _message_text(messages[-1].get("content"))
 
 
 def completion_events(
-    result_factory: Callable[[], ChatTurnResult],
+    result_factory: Callable[[], ChatTurnResult | None],
     *,
     model: str,
     available_tools: list[dict[str, Any]],
+    emit_initial_buffer: bool = True,
 ) -> Iterator[str]:
     completion_id = f"chatcmpl-{uuid4().hex}"
     created = int(time.time())
     # Send CopyRenderer-owned buffer text before running the core. ElevenLabs
     # requires visible buffer words for slow custom LLMs, not an empty chunk.
-    yield _sse(
-        _chunk(
-            completion_id,
-            created,
-            model,
-            {"role": "assistant", "content": render_vedruna_stream_buffer()},
+    if emit_initial_buffer:
+        yield _sse(
+            _chunk(
+                completion_id,
+                created,
+                model,
+                {"role": "assistant", "content": render_vedruna_stream_buffer()},
+            )
         )
-    )
     # Keep the core and its persistence lifecycle on the request thread. A
     # background worker can reuse a database session from a previous turn.
     result = result_factory()
+    if result is None:
+        yield _sse(
+            _chunk(
+                completion_id,
+                created,
+                model,
+                {"content": ""},
+            )
+        )
+        yield _sse(_chunk(completion_id, created, model, {}, finish_reason="stop"))
+        yield "data: [DONE]\n\n"
+        return
     transfer = _transfer_tool_call(result, available_tools)
     if transfer:
         yield _sse(

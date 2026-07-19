@@ -41,11 +41,27 @@ def elevenlabs_chat_completions(
     stable_conversation_id = conversation_id or body.user_id
     if not stable_conversation_id:
         raise HTTPException(status_code=400, detail="missing_conversation_id")
+    user_text = latest_user_text(body.messages)
+    canonical_conversation_id = f"elevenlabs:{stable_conversation_id}"
+    if not user_text:
+        return StreamingResponse(
+            completion_events(
+                lambda: None,
+                model=body.model,
+                available_tools=body.tools,
+                emit_initial_buffer=False,
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
     message = IncomingMessage(
         channel="voice",
-        conversation_id=f"elevenlabs:{stable_conversation_id}",
+        conversation_id=canonical_conversation_id,
         client_id="vedruna",
-        text=latest_user_text(body.messages),
+        text=user_text,
         media={"source": "elevenlabs_custom_llm"},
     )
     return StreamingResponse(

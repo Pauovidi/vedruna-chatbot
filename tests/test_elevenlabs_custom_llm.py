@@ -100,7 +100,7 @@ def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     events = _events(response)
     first_choice = events[0]["choices"][0]
     assert first_choice["delta"]["role"] == "assistant"
-    assert first_choice["delta"]["content"] == ""
+    assert first_choice["delta"]["content"].endswith("... ")
     assert first_choice["logprobs"] is None
     assert events[0]["system_fingerprint"] is None
     assert events[1]["choices"][0]["delta"]["content"]
@@ -121,10 +121,30 @@ def test_custom_llm_streams_before_running_core() -> None:
     )
     first_event = next(events)
     assert '"role": "assistant"' in first_event
-    assert '"content": ""' in first_event
+    assert '"content": "Un momento, por favor... "' in first_event
     assert calls == []
     next(events)
     assert calls == ["run"]
+
+
+def test_custom_llm_ignores_requests_without_a_current_user_message(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    response = client.post(
+        "/v1/chat/completions",
+        headers={
+            "Authorization": "Bearer test-custom-llm-key",
+            "X-ElevenLabs-Conversation-ID": "conv-empty-message",
+        },
+        json={
+            "model": "vedruna-core",
+            "messages": [{"role": "assistant", "content": "Bienvenida"}],
+            "stream": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Un momento" not in response.text
+    assert "Para que clinica" not in response.text
 
 
 def test_custom_llm_uses_structured_nlu_without_remote_round_trip(monkeypatch) -> None:

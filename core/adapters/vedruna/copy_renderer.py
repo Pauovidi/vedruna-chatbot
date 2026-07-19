@@ -41,8 +41,8 @@ def render_vedruna_reply(
 
 
 def render_vedruna_stream_buffer() -> str:
-    """Open the streaming response without adding spoken filler to the reply."""
-    return ""
+    """CopyRenderer-owned buffer text for a slow voice transport."""
+    return "Un momento, por favor... "
 
 
 def _render_text(
