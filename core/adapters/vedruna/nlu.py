@@ -25,6 +25,40 @@ LAST_NAMES_RE = re.compile(
     r"\b(?:mis apellidos(?:\s+son)?|mi apellido(?:\s+es)?)\s+([^\d\W_]+(?:\s+[^\d\W_]+){0,3})",
     re.IGNORECASE,
 )
+PERSON_REPLY_RE = re.compile(
+    r"^[^\W\d_]+(?:[-'][^\W\d_]+)?(?:\s+[^\W\d_]+(?:[-'][^\W\d_]+)?){0,3}$",
+    re.UNICODE,
+)
+NON_DATA_REPLIES = {
+    "si",
+    "sí",
+    "no",
+    "ok",
+    "vale",
+    "correcto",
+    "exacto",
+    "asi es",
+    "así es",
+    "hola",
+    "buenas",
+    "gracias",
+}
+PRIORITY_INTENT_TERMS = {
+    "precio",
+    "cuanto cuesta",
+    "coste",
+    "tarifa",
+    "persona",
+    "humano",
+    "operador",
+    "urgente",
+    "urgencia",
+    "emergencia",
+    "cancelar",
+    "anular",
+    "modificar",
+    "reagendar",
+}
 FAQ_INTENTS = {
     "price_query",
     "insurance_question",
@@ -110,6 +144,14 @@ def interpret_vedruna_message(
     if last_names:
         slots["patient_last_names"] = last_names
         target_slots["patient_last_names"] = {"slot": "patient_last_names"}
+
+    _apply_contextual_pending_reply(
+        message.text,
+        normalized,
+        context,
+        slots,
+        target_slots,
+    )
 
     selected_slot = _selected_slot_from_message(message, context)
     if selected_slot:
@@ -305,6 +347,41 @@ def _extract_last_names(text: str) -> str | None:
     if not match:
         return None
     return " ".join(part.title() for part in match.group(1).strip().split()) or None
+
+
+def _apply_contextual_pending_reply(
+    text: str,
+    normalized: str,
+    context: dict[str, object],
+    slots: dict[str, Any],
+    target_slots: dict[str, Any],
+) -> None:
+    pending_fields = context.get("pending_fields")
+    if not isinstance(pending_fields, list) or len(pending_fields) != 1:
+        return
+    if normalized in NON_DATA_REPLIES or any(
+        term in normalized for term in PRIORITY_INTENT_TERMS
+    ):
+        return
+
+    pending_field = pending_fields[0]
+    clean_text = text.strip().strip(" .,!?:;")
+    if not clean_text:
+        return
+
+    if pending_field in {"patient_first_name", "patient_last_names"}:
+        if not PERSON_REPLY_RE.fullmatch(clean_text):
+            return
+        slots.setdefault(
+            pending_field,
+            " ".join(part.title() for part in clean_text.split()),
+        )
+        target_slots[pending_field] = {"slot": pending_field}
+        return
+
+    if pending_field == "consultation_reason" and 2 <= len(clean_text) <= 240:
+        slots.setdefault("consultation_reason", clean_text)
+        target_slots["consultation_reason"] = {"slot": "consultation_reason"}
 
 
 def _selected_slot_from_message(

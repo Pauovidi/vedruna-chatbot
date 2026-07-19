@@ -236,6 +236,34 @@ def test_custom_llm_understands_natural_patient_name_and_last_names(monkeypatch)
     assert "telefono" in last_names.text.lower()
 
 
+def test_custom_llm_accepts_bare_answers_for_prompted_patient_fields(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    conversation_id = "conv-bare-patient-fields"
+
+    first = _request(
+        client,
+        text="Quiero una cita en Madre Vedruna para podologia y tengo Sanitas",
+        conversation_id=conversation_id,
+    )
+    assert "nombre" in first.text.lower()
+
+    last_names = _request(client, text="Laura", conversation_id=conversation_id)
+    assert "apellidos" in last_names.text.lower()
+
+    phone = _request(client, text="Garcia Perez", conversation_id=conversation_id)
+    assert "telefono" in phone.text.lower()
+
+    reason = _request(client, text="600111222", conversation_id=conversation_id)
+    assert "motivo" in reason.text.lower()
+
+    date = _request(
+        client,
+        text="revision preventiva",
+        conversation_id=conversation_id,
+    )
+    assert "dia" in date.text.lower()
+
+
 def test_custom_llm_santa_isabel_insurance_is_particular_only(monkeypatch) -> None:
     client = _client(monkeypatch)
     response = _request(
