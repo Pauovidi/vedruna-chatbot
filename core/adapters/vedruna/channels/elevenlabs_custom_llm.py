@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from typing import Any
 from uuid import uuid4
 
@@ -24,6 +26,7 @@ def completion_events(
     *,
     model: str,
     available_tools: list[dict[str, Any]],
+    heartbeat_interval_seconds: float = 1.0,
 ) -> Iterator[str]:
     completion_id = f"chatcmpl-{uuid4().hex}"
     created = int(time.time())
@@ -37,7 +40,16 @@ def completion_events(
             {"role": "assistant", "content": render_vedruna_stream_buffer()},
         )
     )
-    result = result_factory()
+    # Keep the SSE transport alive while the core persists its audit events.
+    # Comments are standard SSE heartbeats and are not spoken or rendered.
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        result_future = executor.submit(result_factory)
+        while True:
+            try:
+                result = result_future.result(timeout=heartbeat_interval_seconds)
+                break
+            except FutureTimeout:
+                yield ": keep-alive\n\n"
     transfer = _transfer_tool_call(result, available_tools)
     if transfer:
         yield _sse(
