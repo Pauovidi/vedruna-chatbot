@@ -16,7 +16,8 @@ from api.main import app
 from core.adapters.vedruna.channels.elevenlabs_custom_llm import completion_events
 from core.config import get_settings
 from core.llm.openai_provider import OpenAIProvider
-from core.llm.schemas import ChatTurnResult
+from core.llm.schemas import ChatTurnResult, ToolResult
+from core.nlu.deterministic_interpreter import DeterministicNLUInterpreter
 
 
 def _reset_dependencies() -> None:
@@ -29,9 +30,18 @@ def _reset_dependencies() -> None:
     get_settings.cache_clear()
 
 
-def _client(monkeypatch, *, openai_api_key: str = "") -> TestClient:
+def _client(
+    monkeypatch,
+    *,
+    openai_api_key: str = "",
+    remote_nlu_enabled: bool = False,
+) -> TestClient:
     monkeypatch.setenv("ELEVENLABS_CUSTOM_LLM_API_KEY", "test-custom-llm-key")
     monkeypatch.setenv("OPENAI_API_KEY", openai_api_key)
+    monkeypatch.setenv(
+        "ELEVENLABS_REMOTE_NLU_ENABLED",
+        str(remote_nlu_enabled).lower(),
+    )
     monkeypatch.setenv("DATABASE_URL", "")
     monkeypatch.setenv("RPA_DRY_RUN", "true")
     monkeypatch.setenv("VOICE_TRANSFER_ENABLED", "false")
@@ -159,6 +169,29 @@ def test_custom_llm_uses_structured_nlu_without_remote_round_trip(monkeypatch) -
     assert response.status_code == 200
     assert "Madre Vedruna" in response.text
     assert "Santa Isabel" in response.text
+
+
+def test_custom_llm_can_use_remote_structured_nlu_when_enabled(monkeypatch) -> None:
+    calls: list[str] = []
+    deterministic = DeterministicNLUInterpreter()
+
+    def remote_nlu(self, message, context, snippets, tools):  # type: ignore[no-untyped-def]
+        del self
+        calls.append(message.text)
+        return deterministic.interpret(message, context, snippets, tools)
+
+    monkeypatch.setattr(OpenAIProvider, "interpret", remote_nlu)
+    client = _client(
+        monkeypatch,
+        openai_api_key="sk-test",
+        remote_nlu_enabled=True,
+    )
+
+    response = _request(client, text="Hola, quiero pedir una cita")
+
+    assert response.status_code == 200
+    assert calls == ["Hola, quiero pedir una cita"]
+    assert "Madre Vedruna" in response.text
 
 
 def test_custom_llm_greeting_with_booking_request_starts_booking(monkeypatch) -> None:
@@ -296,7 +329,7 @@ def test_custom_llm_preserves_state_and_dry_run_blocks_real_booking(monkeypatch)
     assert "prueba" in response.text.lower() or "real" in response.text.lower()
 
 
-def test_custom_llm_emits_elevenlabs_transfer_tool_call(monkeypatch) -> None:
+def test_custom_llm_suppresses_elevenlabs_transfer_when_disabled(monkeypatch) -> None:
     client = _client(monkeypatch)
     response = _request(
         client,
@@ -314,9 +347,55 @@ def test_custom_llm_emits_elevenlabs_transfer_tool_call(monkeypatch) -> None:
     )
     assert response.status_code == 200
     events = _events(response)
-    tool_calls = events[1]["choices"][0]["delta"]["tool_calls"]
+    assert all(
+        event["choices"][0]["delta"]["tool_calls"] is None for event in events
+    )
+    assert "transferencia real" in response.text.lower()
+
+
+def test_completion_events_emits_transfer_only_after_real_transfer() -> None:
+    result = ChatTurnResult(
+        conversation_id="conv-transfer",
+        intent="price_query",
+        reply_key="vedruna_voice_transfer",
+        reply_text="Te paso con la clinica.",
+        tool_results=[
+            ToolResult(
+                name="voice_transfer_call",
+                status="success",
+                user_safe_summary="Transferencia simulada completada.",
+                data={
+                    "transfer_enabled": True,
+                    "real_transfer_executed": True,
+                    "arguments": {"clinic": "santa_isabel"},
+                },
+            )
+        ],
+    )
+    stream = "".join(
+        completion_events(
+            lambda: result,
+            model="vedruna-core",
+            available_tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "transfer_to_number",
+                        "parameters": {"type": "object"},
+                    },
+                }
+            ],
+            emit_initial_buffer=False,
+        )
+    )
+    events = [
+        json.loads(line.removeprefix("data: "))
+        for line in stream.splitlines()
+        if line.startswith("data: {")
+    ]
+
+    tool_calls = events[0]["choices"][0]["delta"]["tool_calls"]
     function = tool_calls[0]["function"]
     assert function["name"] == "transfer_to_number"
     arguments = json.loads(function["arguments"])
     assert arguments["transfer_number"] == "+34976582768"
-    assert "precio" not in response.text.lower()

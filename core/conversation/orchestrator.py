@@ -507,10 +507,13 @@ class ConversationOrchestrator:
             )
             return deterministic_result, metrics
 
-        if message.media.get("source") == "elevenlabs_custom_llm":
+        if (
+            message.media.get("source") == "elevenlabs_custom_llm"
+            and not self.settings.elevenlabs_remote_nlu_enabled
+        ):
             # ElevenLabs has a short end-to-end custom-LLM deadline. This channel
-            # already enters through a structured Vedruna interpreter, so avoid a
-            # second remote NLU round trip and preserve the core policy pipeline.
+            # defaults to the deterministic interpreter until remote NLU has been
+            # explicitly validated for the deployment.
             self._record_event(
                 message.conversation_id,
                 "nlu_elevenlabs_deterministic_fast_path_used",
@@ -520,6 +523,13 @@ class ConversationOrchestrator:
                 },
             )
             return deterministic_result, metrics
+
+        if message.media.get("source") == "elevenlabs_custom_llm":
+            self._record_event(
+                message.conversation_id,
+                "nlu_elevenlabs_remote_nlu_enabled",
+                {},
+            )
 
         if not self.settings.conversational_reply_enabled:
             self._record_event(message.conversation_id, "llm_disabled", {})

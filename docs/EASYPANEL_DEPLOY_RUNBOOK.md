@@ -31,6 +31,7 @@ CONVERSATION_RELAY_LANGUAGE=es-ES
 CONVERSATION_RELAY_TRANSCRIPTION_LANGUAGE=es-ES
 CONVERSATION_RELAY_WELCOME_GREETING=Hola, soy el asistente de Clinica Madre Vedruna y Clinica Santa Isabel. En que puedo ayudarte?
 ELEVENLABS_CUSTOM_LLM_API_KEY=<secret-shared-only-with-elevenlabs>
+ELEVENLABS_REMOTE_NLU_ENABLED=false
 VOICE_TRANSFER_ENABLED=false
 RPA_BASE_URL=https://vedruna-rpa-rpa.ddxo6v.easypanel.host
 RPA_API_KEY=<secret>
@@ -63,6 +64,9 @@ Production should report durable persistence through Postgres.
 - ElevenLabs Custom LLM points to `https://<public-domain>/v1/chat/completions`.
 - ElevenLabs sends `X-ElevenLabs-Conversation-ID` from `system__conversation_id`.
 - `ELEVENLABS_CUSTOM_LLM_API_KEY` is stored only in EasyPanel and ElevenLabs secrets.
+- Keep `ELEVENLABS_REMOTE_NLU_ENABLED=false` until the Custom LLM preview has
+  passed its conversational test suite. When enabled, OpenAI is used only for
+  structured NLU; visible copy remains owned by the CopyRenderer.
 - `TWILIO_VALIDATE_SIGNATURE=true` only after webhook URL and token are correct.
 - Meta/WhatsApp credentials configured if real WhatsApp send is enabled later.
 - RPA contract confirmed by the RPA owner.

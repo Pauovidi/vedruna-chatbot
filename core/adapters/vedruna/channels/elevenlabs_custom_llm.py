@@ -46,10 +46,11 @@ def completion_events(
     core_started = perf_counter()
     try:
         result = result_factory()
-    except Exception:
+    except Exception as exc:
         logger.error(
-            "elevenlabs_core_turn_failed elapsed_ms=%d",
+            "elevenlabs_core_turn_failed elapsed_ms=%d error_type=%s",
             round((perf_counter() - core_started) * 1000),
+            type(exc).__name__,
         )
         raise
     if result is not None:
@@ -131,6 +132,8 @@ def _transfer_tool_call(
         return None
     if not _has_transfer_tool(available_tools):
         return None
+    if not _real_transfer_was_executed(result):
+        return None
     clinic = _transfer_clinic(result)
     number = clinic_phone(clinic)
     if not number:
@@ -141,6 +144,18 @@ def _transfer_tool_call(
         "client_message": "Te paso con la clinica para que puedan atenderte directamente.",
         "agent_message": "Llamada transferida desde el asistente de Vedruna.",
     }
+
+
+def _real_transfer_was_executed(result: ChatTurnResult) -> bool:
+    for tool_result in result.tool_results:
+        if tool_result.name != "voice_transfer_call":
+            continue
+        data = tool_result.data
+        return (
+            data.get("transfer_enabled") is True
+            and data.get("real_transfer_executed") is True
+        )
+    return False
 
 
 def _transfer_clinic(result: ChatTurnResult) -> str | None:
