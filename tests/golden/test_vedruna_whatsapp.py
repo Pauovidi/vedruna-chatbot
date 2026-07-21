@@ -42,6 +42,23 @@ def test_price_query_never_returns_amount() -> None:
     assert "976582768" in result.reply_text
 
 
+def test_price_query_waits_for_clinic_without_entering_booking_flow() -> None:
+    orchestrator, _store = make_vedruna_orchestrator()
+    conversation_id = "v-price-clinic"
+
+    first = turn(
+        orchestrator,
+        "cuanto cuesta una infiltracion",
+        conversation_id=conversation_id,
+    )
+    assert first.reply_key == "vedruna_price_ask_clinic"
+
+    second = turn(orchestrator, "Santa Isabel", conversation_id=conversation_id)
+    assert second.reply_key == "vedruna_price_with_clinic"
+    assert "976582768" in second.reply_text
+    assert "nombre" not in second.reply_text.lower()
+
+
 def test_full_booking_dry_run_offers_slots_but_does_not_confirm_real_appointment() -> None:
     orchestrator, store = make_vedruna_orchestrator()
     conversation_id = "v-full"

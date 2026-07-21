@@ -48,7 +48,15 @@ def decide_vedruna_action(
             if slots.get("clinic")
             else "vedruna_price_ask_clinic"
         )
-        return _reply(reply_key, state_updates=_flow(context.active_flow))
+        return _reply(
+            reply_key,
+            state_updates=_flow(None if slots.get("clinic") else "vedruna_price"),
+        )
+
+    if context.active_flow == "vedruna_price":
+        if slots.get("clinic"):
+            return _reply("vedruna_price_with_clinic", state_updates=_flow(None))
+        return _reply("vedruna_price_ask_clinic", state_updates=_flow("vedruna_price"))
 
     if intent == "urgent_request":
         if channel == "voice":

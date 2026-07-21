@@ -278,6 +278,8 @@ def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) 
 
 def _active_topic(intent: str, context: dict[str, object]) -> str | None:
     current = context.get("active_flow") or context.get("current_flow")
+    if current == "vedruna_price" and intent in {"choose_clinic", "unknown"}:
+        return current
     if isinstance(current, str) and current in {
         "vedruna_cancellation",
         "vedruna_reschedule",
