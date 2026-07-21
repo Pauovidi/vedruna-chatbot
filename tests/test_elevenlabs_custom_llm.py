@@ -111,8 +111,8 @@ def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     first_choice = events[0]["choices"][0]
     assert first_choice["delta"]["role"] == "assistant"
     assert first_choice["delta"]["content"].endswith("... ")
-    assert first_choice["logprobs"] is None
-    assert events[0]["system_fingerprint"] is None
+    assert "logprobs" not in first_choice
+    assert "system_fingerprint" not in events[0]
     assert events[1]["choices"][0]["delta"]["content"]
     assert events[-1]["choices"][0]["finish_reason"] == "stop"
 
@@ -211,7 +211,7 @@ def test_custom_llm_understands_madre_vedruna_service_confirmation(monkeypatch) 
         text="Quiero una cita en Madre Vedruna",
         conversation_id=conversation_id,
     )
-    assert "Es para podologia" in first.text
+    assert "Es para una cita de podologia" in first.text
 
     response = _request(
         client,
@@ -220,7 +220,7 @@ def test_custom_llm_understands_madre_vedruna_service_confirmation(monkeypatch) 
     )
 
     assert response.status_code == 200
-    assert "Dime tu nombre" in response.text
+    assert "Para continuar, dime tu nombre" in response.text
 
 
 def test_custom_llm_understands_natural_service_confirmation(monkeypatch) -> None:
@@ -347,9 +347,7 @@ def test_custom_llm_suppresses_elevenlabs_transfer_when_disabled(monkeypatch) ->
     )
     assert response.status_code == 200
     events = _events(response)
-    assert all(
-        event["choices"][0]["delta"]["tool_calls"] is None for event in events
-    )
+    assert all("tool_calls" not in event["choices"][0]["delta"] for event in events)
     assert "transferencia real" in response.text.lower()
 
 

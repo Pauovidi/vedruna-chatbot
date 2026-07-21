@@ -199,30 +199,18 @@ def _chunk(
     *,
     finish_reason: str | None = None,
 ) -> dict[str, Any]:
-    # Match the fields produced by OpenAI's ChatCompletionChunk.model_dump().
-    # ElevenLabs consumes this endpoint through an OpenAI-compatible client.
-    normalized_delta = {
-        "content": None,
-        "function_call": None,
-        "refusal": None,
-        "role": None,
-        "tool_calls": None,
-    }
-    normalized_delta.update(delta)
+    # ElevenLabs only needs the standard OpenAI streaming fields. Omitting
+    # null-only SDK fields avoids cascading failures in stricter parsers.
     return {
         "id": completion_id,
         "object": "chat.completion.chunk",
         "created": created,
         "model": model,
-        "service_tier": None,
-        "system_fingerprint": None,
-        "usage": None,
         "choices": [
             {
                 "index": 0,
-                "delta": normalized_delta,
+                "delta": delta,
                 "finish_reason": finish_reason,
-                "logprobs": None,
             }
         ],
     }
