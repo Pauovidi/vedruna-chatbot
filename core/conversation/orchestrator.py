@@ -396,7 +396,7 @@ class ConversationOrchestrator:
             "renderer_used",
             {"reply_key": rendered.reply_key, "visibility": rendered.visibility},
         )
-        if rendered.text:
+        if rendered.text and not message.media.get("suppress_outbox"):
             with _measure(timings, "outbox_ms"):
                 outbox_result = self.outbox.send(
                     OutboxMessage(

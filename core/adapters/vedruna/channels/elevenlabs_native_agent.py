@@ -17,14 +17,11 @@ class NativeAgentToolResult(BaseModel):
 
 
 class NativeAgentAuthority(BaseModel):
-    """Machine-readable constraints for an ElevenLabs native agent.
-
-    This is deliberately not patient-facing copy. The native agent owns phrasing;
-    the core owns the fields, state transitions, tool permissions, and outcomes.
-    """
+    """Core-owned authority and rendered copy for an ElevenLabs native agent."""
 
     conversation_id: str
     reply_key: str | None = None
+    copy_text: str = ""
     next_step: str
     pending_fields: list[str] = Field(default_factory=list)
     collected_fields: list[str] = Field(default_factory=list)
@@ -72,6 +69,7 @@ def build_native_agent_authority(
     return NativeAgentAuthority(
         conversation_id=result.conversation_id,
         reply_key=result.reply_key,
+        copy_text=result.reply_text,
         next_step=_next_step(result, state, confirmation_required),
         pending_fields=list(state.pending_fields),
         collected_fields=sorted(

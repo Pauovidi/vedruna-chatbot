@@ -108,7 +108,7 @@ def elevenlabs_native_agent_turn(
         text=body.utterance,
         media={
             "source": "elevenlabs_native_agent",
-            "suppress_visible_copy": True,
+            "suppress_outbox": True,
             "confirmation_verified": _is_explicit_confirmation(body.utterance),
             "call_sid": body.call_sid,
         },

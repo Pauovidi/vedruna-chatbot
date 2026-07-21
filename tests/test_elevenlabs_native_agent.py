@@ -62,7 +62,7 @@ def test_native_agent_route_requires_explicit_enablement(monkeypatch) -> None:
     assert response.status_code == 503
 
 
-def test_native_agent_turn_returns_authority_without_renderer_copy(monkeypatch) -> None:
+def test_native_agent_turn_returns_core_rendered_copy_without_outbox(monkeypatch) -> None:
     client = _client(monkeypatch)
 
     response = _turn(client, "Hola, quiero pedir una cita")
@@ -70,9 +70,11 @@ def test_native_agent_turn_returns_authority_without_renderer_copy(monkeypatch) 
     assert response.status_code == 200
     body = response.json()
     assert body["reply_key"] == "vedruna_ask_clinic"
+    assert body["copy_text"] == (
+        "Para que clinica quieres la cita: Madre Vedruna o Santa Isabel?"
+    )
     assert body["next_step"] == "collect_missing_booking_field"
     assert body["pending_fields"] == ["clinic"]
-    assert "reply_text" not in body
     messages = get_state_manager().list_messages("elevenlabs-native:native-conv")
     assert [message["role"] for message in messages] == ["user"]
 
