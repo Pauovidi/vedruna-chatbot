@@ -77,6 +77,18 @@ def test_native_agent_turn_returns_authority_without_renderer_copy(monkeypatch) 
     assert [message["role"] for message in messages] == ["user"]
 
 
+def test_native_agent_accepts_elevenlabs_secret_header_value(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    response = client.post(
+        "/v1/agent/turn",
+        headers={"Authorization": "native-agent-test-key"},
+        json={"conversation_id": "native-secret", "utterance": "hola"},
+    )
+
+    assert response.status_code == 200
+
+
 def test_native_agent_booking_needs_server_verified_confirmation(monkeypatch) -> None:
     client = _client(monkeypatch)
     conversation_id = "native-booking"

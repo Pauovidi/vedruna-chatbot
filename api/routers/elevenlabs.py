@@ -99,7 +99,7 @@ def elevenlabs_native_agent_turn(
     settings = get_settings()
     if not settings.elevenlabs_native_agent_enabled:
         raise HTTPException(status_code=503, detail="native_agent_not_enabled")
-    _require_auth(authorization, settings.elevenlabs_agent_api_key)
+    _require_native_agent_auth(authorization, settings.elevenlabs_agent_api_key)
     canonical_conversation_id = f"elevenlabs-native:{body.conversation_id}"
     message = IncomingMessage(
         channel="voice",
@@ -127,6 +127,20 @@ def _require_auth(authorization: str | None, expected_key: str | None) -> None:
     supplied = authorization[len(prefix) :]
     if not hmac.compare_digest(supplied, expected_key):
         raise HTTPException(status_code=401, detail="invalid_custom_llm_auth")
+
+
+def _require_native_agent_auth(
+    authorization: str | None,
+    expected_key: str | None,
+) -> None:
+    """Accept ElevenLabs server-tool secrets without weakening Custom LLM auth."""
+    if not expected_key:
+        raise HTTPException(status_code=503, detail="native_agent_not_configured")
+    if not authorization:
+        raise HTTPException(status_code=401, detail="invalid_native_agent_auth")
+    supplied = authorization.removeprefix("Bearer ")
+    if not hmac.compare_digest(supplied, expected_key):
+        raise HTTPException(status_code=401, detail="invalid_native_agent_auth")
 
 
 def _is_explicit_confirmation(utterance: str) -> bool:
