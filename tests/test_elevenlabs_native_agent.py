@@ -71,7 +71,7 @@ def test_native_agent_turn_returns_core_rendered_copy_without_outbox(monkeypatch
     body = response.json()
     assert body["reply_key"] == "vedruna_ask_clinic"
     assert body["copy_text"] == (
-        "Para que clinica quieres la cita: Madre Vedruna o Santa Isabel?"
+        "Claro. Para que clinica quieres la cita: Madre Vedruna o Santa Isabel?"
     )
     assert body["next_step"] == "collect_missing_booking_field"
     assert body["pending_fields"] == ["clinic"]
@@ -152,3 +152,35 @@ def test_native_agent_santa_isabel_rejects_insurance(monkeypatch) -> None:
     assert body["reply_key"] == "vedruna_santa_isabel_particular_only"
     assert body["clinic"] == "santa_isabel"
     assert body["handoff_required"] is False
+
+
+def test_native_agent_keeps_booking_state_across_all_required_fields(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    conversation_id = "native-stateful-booking"
+
+    steps = [
+        ("Quiero coger una cita", "vedruna_ask_clinic"),
+        ("Santa Isabel", "vedruna_ask_service_santa"),
+        ("Infiltracion", "vedruna_ask_first_name"),
+        ("Pau", "vedruna_ask_last_names"),
+        ("Marco Marti", "vedruna_ask_phone"),
+        ("645290441", "vedruna_ask_reason"),
+        ("Dolor en el talon", "vedruna_ask_date"),
+    ]
+
+    for index, (utterance, expected_reply_key) in enumerate(steps):
+        response = _turn(client, utterance, conversation_id=conversation_id)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["reply_key"] == expected_reply_key
+        if index:
+            assert body["clinic"] == "santa_isabel"
+        assert body["copy_text"]
+
+    state = get_state_manager().load(
+        "elevenlabs-native:native-stateful-booking",
+        "vedruna",
+    )
+    assert state.slots["clinic"] == "santa_isabel"
+    assert state.slots["service"] == "infiltracion"
+    assert state.slots["patient_phone"] == "645290441"

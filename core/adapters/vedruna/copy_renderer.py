@@ -56,34 +56,34 @@ def _render_text(
     if reply_key == "vedruna_greeting":
         if channel == "voice":
             return (
-                "Hola, soy el asistente de Clinica Madre Vedruna y Clinica Santa Isabel, "
-                "en que puedo ayudarte?"
+                "Hola, soy el asistente virtual de Clinica Madre Vedruna y Clinica "
+                "Santa Isabel. Estoy aqui para ayudarte con tu cita. En que puedo ayudarte?"
             )
         return (
-            "Hola. Estas hablando con el asistente de Clinica Madre Vedruna y "
-            "Clinica Santa Isabel. En que puedo ayudarte?"
+            "Hola, soy el asistente virtual de Clinica Madre Vedruna y Clinica "
+            "Santa Isabel. Estoy aqui para ayudarte con tu cita. En que puedo ayudarte?"
         )
     if reply_key == "vedruna_ask_clinic":
-        return "Para que clinica quieres la cita: Madre Vedruna o Santa Isabel?"
+        return "Claro. Para que clinica quieres la cita: Madre Vedruna o Santa Isabel?"
     if reply_key == "vedruna_ask_service_madre":
-        return "En Madre Vedruna puedo ayudarte a citar podologia. Es para podologia?"
+        return "En Madre Vedruna atendemos podologia. Es para una cita de podologia?"
     if reply_key == "vedruna_ask_service_santa":
         return (
-            "En Santa Isabel puedo ayudarte con quiropodia, estudio biomecanico, "
-            "infiltracion, ecografia u otro problema. Que necesitas?"
+            "En Santa Isabel atendemos quiropodia, estudio biomecanico, infiltracion, "
+            "ecografia u otro problema. Cual necesitas?"
         )
     if reply_key == "vedruna_ask_insurance":
-        return "Vienes por Sanitas, Generali o particular?"
+        return "Para Madre Vedruna, vienes por Sanitas, Generali o particular?"
     if reply_key == "vedruna_ask_first_name":
-        return "Dime tu nombre, por favor."
+        return "Perfecto. Para continuar, dime tu nombre, por favor."
     if reply_key == "vedruna_ask_last_names":
-        return "Gracias. Ahora dime tus apellidos."
+        return "Gracias. Ahora dime tus apellidos, por favor."
     if reply_key == "vedruna_ask_phone":
-        return "Dime un telefono de contacto, por favor."
+        return "Gracias. Dime un telefono de contacto, por favor."
     if reply_key == "vedruna_ask_reason":
-        return "Cual es el motivo de la consulta?"
+        return "Para dejarlo bien anotado, cual es el motivo de la consulta?"
     if reply_key == "vedruna_ask_date":
-        return "Que dia o franja prefieres para la cita?"
+        return "Que dia o franja te viene mejor para la cita?"
     if reply_key == "vedruna_searching_availability":
         return "Voy a mirar disponibilidad."
     if reply_key == "vedruna_offer_slots":
