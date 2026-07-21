@@ -100,6 +100,23 @@ def test_custom_llm_requires_stable_conversation_id(monkeypatch) -> None:
     assert response.status_code == 400
 
 
+def test_custom_llm_accepts_openai_standard_user_identifier(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    response = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer test-custom-llm-key"},
+        json={
+            "model": "vedruna-core",
+            "user": "eleven-preview-user",
+            "messages": [{"role": "user", "content": "quiero una cita"}],
+        },
+    )
+
+    assert response.status_code == 200
+    assert "chat.completion.chunk" in response.text
+
+
 def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     client = _client(monkeypatch)
     response = _request(client, text="hola")

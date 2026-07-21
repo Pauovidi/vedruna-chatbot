@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from api.dependencies import get_orchestrator, get_state_manager
 from core.adapters.vedruna.channels.elevenlabs_custom_llm import (
@@ -29,7 +29,12 @@ class ElevenLabsChatCompletionRequest(BaseModel):
     model: str = "vedruna-core"
     messages: list[dict[str, Any]] = Field(default_factory=list)
     tools: list[dict[str, Any]] = Field(default_factory=list)
-    user_id: str | None = None
+    # OpenAI-compatible clients send this stable identifier as `user`.
+    # Keep `user_id` accepted for existing integrations.
+    user_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("user", "user_id"),
+    )
 
 
 class ElevenLabsNativeAgentTurnRequest(BaseModel):
