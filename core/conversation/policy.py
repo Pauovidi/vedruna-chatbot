@@ -252,6 +252,31 @@ def _reconcile_vedruna_tool_results(
     tool_results: list[ToolResult],
 ) -> ConversationAction:
     result = tool_results[-1]
+    if result.status == "blocked" and result.internal_code == "confirmation_required":
+        pending_action = {
+            "tool_name": action.tool_name,
+            "tool_arguments": action.tool_arguments,
+            "reply_intent": action.reply_intent,
+            "reply_key": action.reply_key,
+            "handoff_reason": action.handoff_reason,
+            "safety_level": action.safety_level,
+            "metadata": action.metadata,
+        }
+        return action.model_copy(
+            update={
+                "action_type": "confirm_before_action",
+                "reply_intent": "confirmation_required",
+                "reply_key": "vedruna_confirmation_required",
+                "requires_tool": False,
+                "tool_name": None,
+                "requires_confirmation": True,
+                "state_updates": {
+                    **action.state_updates,
+                    "pending_action": pending_action,
+                },
+                "metadata": {**action.metadata, "tool_status": result.status},
+            }
+        )
     if result.status in {"blocked", "failed"}:
         return action.model_copy(
             update={

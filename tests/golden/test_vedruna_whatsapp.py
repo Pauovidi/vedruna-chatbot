@@ -62,9 +62,17 @@ def test_full_booking_dry_run_offers_slots_but_does_not_confirm_real_appointment
     assert "simuladas de prueba" in offered.reply_text
 
     selected = turn(orchestrator, "la primera", conversation_id=conversation_id)
-    assert selected.reply_key == "vedruna_create_dry_run_notice"
-    assert selected.tool_results[0].status == "dry_run"
+    assert selected.reply_key == "vedruna_confirmation_required"
+    assert selected.tool_results[0].status == "blocked"
     assert "Confirmamos tu cita" not in selected.reply_text
+    confirmed = turn(
+        orchestrator,
+        "si confirmo",
+        conversation_id=conversation_id,
+        confirmed=True,
+    )
+    assert confirmed.reply_key == "vedruna_create_dry_run_notice"
+    assert confirmed.tool_results[0].status == "dry_run"
     state = store.load_state(conversation_id, "vedruna")
     assert state.slots["selected_slot_id"] == "dry-madre_vedruna-1"
     assert state.slots["selected_slot_date"] == "07/07/2026"
@@ -87,10 +95,17 @@ def test_cancel_lookup_preserves_flow_and_dry_run_never_cancels_real_appointment
     assert "simulado" in lookup.reply_text.lower()
 
     cancelled = turn(orchestrator, "si", conversation_id=conversation_id)
-    assert cancelled.reply_key == "vedruna_rpa_failure"
+    assert cancelled.reply_key == "vedruna_confirmation_required"
     assert cancelled.tool_results[0].name == "rpa_cancel_appointment"
-    assert cancelled.tool_results[0].status == "dry_run"
+    assert cancelled.tool_results[0].status == "blocked"
     assert "cancelado correctamente" not in cancelled.reply_text.lower()
+    confirmed = turn(
+        orchestrator,
+        "si confirmo",
+        conversation_id=conversation_id,
+        confirmed=True,
+    )
+    assert confirmed.tool_results[0].status == "dry_run"
 
 
 def test_recall_lookup_dry_run_is_not_presented_as_real_appointment() -> None:
@@ -122,9 +137,16 @@ def test_reschedule_flow_dry_run_does_not_claim_real_modification() -> None:
 
     selected = turn(orchestrator, "la primera", conversation_id=conversation_id)
     assert selected.tool_results[0].name == "rpa_reschedule_appointment"
-    assert selected.tool_results[0].status == "dry_run"
-    assert selected.reply_key == "vedruna_rpa_failure"
+    assert selected.tool_results[0].status == "blocked"
+    assert selected.reply_key == "vedruna_confirmation_required"
     assert "modificado correctamente" not in selected.reply_text.lower()
+    confirmed = turn(
+        orchestrator,
+        "si confirmo",
+        conversation_id=conversation_id,
+        confirmed=True,
+    )
+    assert confirmed.tool_results[0].status == "dry_run"
 
 
 def test_urgent_whatsapp_enters_safe_booking_flow_without_diagnosis() -> None:

@@ -68,6 +68,14 @@ class Settings(BaseSettings):
         default=None,
         alias="ELEVENLABS_CUSTOM_LLM_API_KEY",
     )
+    elevenlabs_native_agent_enabled: bool = Field(
+        default=False,
+        alias="ELEVENLABS_NATIVE_AGENT_ENABLED",
+    )
+    elevenlabs_agent_api_key: str | None = Field(
+        default=None,
+        alias="ELEVENLABS_AGENT_API_KEY",
+    )
     elevenlabs_remote_nlu_enabled: bool = Field(
         default=False,
         alias="ELEVENLABS_REMOTE_NLU_ENABLED",
@@ -142,6 +150,8 @@ class Settings(BaseSettings):
             "elevenlabs_custom_llm_api_key_present": bool(
                 self.elevenlabs_custom_llm_api_key
             ),
+            "elevenlabs_native_agent_enabled": self.elevenlabs_native_agent_enabled,
+            "elevenlabs_agent_api_key_present": bool(self.elevenlabs_agent_api_key),
             "elevenlabs_remote_nlu_enabled": self.elevenlabs_remote_nlu_enabled,
             "voice_transfer_enabled": self.voice_transfer_enabled,
             "rpa_base_url_present": bool(self.rpa_base_url),

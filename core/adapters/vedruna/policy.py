@@ -29,6 +29,11 @@ def decide_vedruna_action(
     channel = str(context.channel_context.get("channel") or "whatsapp")
     intent = nlu_result.intent
 
+    if context.pending_action and context.flags.get("explicit_confirmation"):
+        resumed = _resume_confirmed_action(context)
+        if resumed is not None:
+            return resumed
+
     if intent == "greeting" and not context.active_flow:
         return _reply("vedruna_greeting", state_updates=_flow(None))
 
@@ -326,6 +331,43 @@ def _reply(reply_key: str, state_updates: dict[str, Any] | None = None) -> Conve
         reply_intent=reply_key,
         reply_key=reply_key,
         state_updates=state_updates or {},
+    )
+
+
+def _resume_confirmed_action(
+    context: ConversationState,
+) -> ConversationAction | None:
+    pending = context.pending_action
+    if not isinstance(pending, dict):
+        return None
+    tool_name = pending.get("tool_name")
+    arguments = pending.get("tool_arguments")
+    if tool_name not in {
+        "rpa_create_appointment",
+        "rpa_cancel_appointment",
+        "rpa_reschedule_appointment",
+    } or not isinstance(arguments, dict):
+        return None
+    metadata = pending.get("metadata")
+    return ConversationAction(
+        action_type="call_tool",
+        reply_intent=str(pending.get("reply_intent") or "confirmed_operation"),
+        reply_key=str(pending.get("reply_key") or "vedruna_creating_appointment"),
+        requires_tool=True,
+        tool_name=tool_name,
+        tool_arguments=arguments,
+        requires_confirmation=True,
+        handoff_reason=(
+            str(pending["handoff_reason"])
+            if pending.get("handoff_reason")
+            else None
+        ),
+        state_updates={
+            **_flow(context.active_flow or context.current_flow),
+            "pending_action": None,
+        },
+        safety_level=str(pending.get("safety_level") or "high"),
+        metadata=metadata if isinstance(metadata, dict) else {},
     )
 
 

@@ -42,6 +42,7 @@ def turn(
     *,
     conversation_id: str = "v-1",
     channel: str = "whatsapp",
+    confirmed: bool = False,
 ):
     return orchestrator.handle_turn(
         IncomingMessage(
@@ -49,5 +50,6 @@ def turn(
             client_id="vedruna",
             channel=channel,
             text=text,
+            media={"confirmation_verified": confirmed},
         )
     )

@@ -17,6 +17,8 @@ def test_health_sanitizes_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
     assert body["openai_api_key_present"] is True
     assert "sk-test-secret" not in str(body)
     assert body["llm_provider"] == "openai"
+    assert body["elevenlabs_native_agent_enabled"] is False
+    assert body["elevenlabs_agent_api_key_present"] is False
 
 
 def test_production_without_durable_db_fails() -> None:

@@ -7,11 +7,16 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from api.dependencies import get_orchestrator
+from api.dependencies import get_orchestrator, get_state_manager
 from core.adapters.vedruna.channels.elevenlabs_custom_llm import (
     completion_events,
     latest_user_text,
 )
+from core.adapters.vedruna.channels.elevenlabs_native_agent import (
+    NativeAgentAuthority,
+    build_native_agent_authority,
+)
+from core.adapters.vedruna.domain_schema import normalize_text
 from core.config import get_settings
 from core.llm.schemas import IncomingMessage
 
@@ -25,6 +30,14 @@ class ElevenLabsChatCompletionRequest(BaseModel):
     messages: list[dict[str, Any]] = Field(default_factory=list)
     tools: list[dict[str, Any]] = Field(default_factory=list)
     user_id: str | None = None
+
+
+class ElevenLabsNativeAgentTurnRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conversation_id: str = Field(min_length=1, max_length=160)
+    utterance: str = Field(min_length=1, max_length=2000)
+    call_sid: str | None = Field(default=None, max_length=160)
 
 
 @router.post("/v1/chat/completions")
@@ -78,6 +91,33 @@ def elevenlabs_chat_completions(
     )
 
 
+@router.post("/v1/agent/turn", response_model=NativeAgentAuthority)
+def elevenlabs_native_agent_turn(
+    body: ElevenLabsNativeAgentTurnRequest,
+    authorization: str | None = Header(default=None),
+) -> NativeAgentAuthority:
+    settings = get_settings()
+    if not settings.elevenlabs_native_agent_enabled:
+        raise HTTPException(status_code=503, detail="native_agent_not_enabled")
+    _require_auth(authorization, settings.elevenlabs_agent_api_key)
+    canonical_conversation_id = f"elevenlabs-native:{body.conversation_id}"
+    message = IncomingMessage(
+        channel="voice",
+        conversation_id=canonical_conversation_id,
+        client_id="vedruna",
+        text=body.utterance,
+        media={
+            "source": "elevenlabs_native_agent",
+            "suppress_visible_copy": True,
+            "confirmation_verified": _is_explicit_confirmation(body.utterance),
+            "call_sid": body.call_sid,
+        },
+    )
+    result = get_orchestrator().handle_turn(message)
+    state = get_state_manager().load(canonical_conversation_id, "vedruna")
+    return build_native_agent_authority(result, state, settings)
+
+
 def _require_auth(authorization: str | None, expected_key: str | None) -> None:
     if not expected_key:
         raise HTTPException(status_code=503, detail="custom_llm_not_configured")
@@ -87,3 +127,16 @@ def _require_auth(authorization: str | None, expected_key: str | None) -> None:
     supplied = authorization[len(prefix) :]
     if not hmac.compare_digest(supplied, expected_key):
         raise HTTPException(status_code=401, detail="invalid_custom_llm_auth")
+
+
+def _is_explicit_confirmation(utterance: str) -> bool:
+    normalized = normalize_text(utterance)
+    return normalized in {
+        "si",
+        "si confirmo",
+        "confirmo",
+        "confirmalo",
+        "confirmar",
+        "de acuerdo confirmo",
+        "adelante confirmo",
+    }

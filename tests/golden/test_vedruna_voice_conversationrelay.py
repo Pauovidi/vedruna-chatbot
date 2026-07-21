@@ -85,10 +85,19 @@ def test_voice_dtmf_selects_first_offered_slot() -> None:
         inbound,
         ConversationRuntimeAdapters(orchestrator=orchestrator),
     )
-    assert result.reply_key == "vedruna_create_dry_run_notice"
+    assert result.reply_key == "vedruna_confirmation_required"
+    assert result.tool_results[0].status == "blocked"
     assert store.load_state(conversation_id, "vedruna").slots["selected_slot_id"].startswith(
         "dry-santa_isabel"
     )
+    confirmed = turn(
+        orchestrator,
+        "si confirmo",
+        conversation_id=conversation_id,
+        channel="voice",
+        confirmed=True,
+    )
+    assert confirmed.reply_key == "vedruna_create_dry_run_notice"
 
 
 def test_conversationrelay_text_message_shape() -> None:

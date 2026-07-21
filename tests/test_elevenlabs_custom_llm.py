@@ -326,7 +326,7 @@ def test_custom_llm_preserves_state_and_dry_run_blocks_real_booking(monkeypatch)
         assert response.status_code == 200
     assert response is not None
     assert "Confirmamos tu cita" not in response.text
-    assert "prueba" in response.text.lower() or "real" in response.text.lower()
+    assert "confirmes claramente" in response.text.lower()
 
 
 def test_custom_llm_suppresses_elevenlabs_transfer_when_disabled(monkeypatch) -> None:

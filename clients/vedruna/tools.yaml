@@ -12,7 +12,7 @@ tools:
   - name: rpa_create_appointment
     description: Crear una cita mediante la RPA externa cuando hay slot real elegido.
     risk_level: high
-    required_confirmation: false
+    required_confirmation: true
     required_flags: []
     allowed_channels:
       - whatsapp
@@ -32,7 +32,7 @@ tools:
   - name: rpa_cancel_appointment
     description: Cancelar una cita existente tras confirmacion conversacional.
     risk_level: high
-    required_confirmation: false
+    required_confirmation: true
     required_flags: []
     allowed_channels:
       - whatsapp
@@ -41,7 +41,7 @@ tools:
   - name: rpa_reschedule_appointment
     description: Reagendar una cita existente tras elegir nuevo slot RPA.
     risk_level: high
-    required_confirmation: false
+    required_confirmation: true
     required_flags: []
     allowed_channels:
       - whatsapp

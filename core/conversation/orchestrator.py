@@ -15,7 +15,7 @@ from core.conversation.contracts import (
     IgnoredSlotTrace,
     StatePatchSummary,
 )
-from core.conversation.copy_renderer import render_conversation_reply
+from core.conversation.copy_renderer import RenderedReply, render_conversation_reply
 from core.conversation.invariants import enforce_authority_invariants
 from core.conversation.memory import compact_context
 from core.conversation.policy import decide_next_action, reconcile_tool_results
@@ -132,6 +132,11 @@ class ConversationOrchestrator:
             counts["store_reads"] += 1
         state.recent_context_summary = compact_context(previous_messages)
         state_before = state.model_copy(deep=True)
+        # This value is set only after an adapter has verified a patient phrase.
+        # Reset it each turn so a confirmation cannot leak into a later action.
+        state.flags["explicit_confirmation"] = bool(
+            message.media.get("confirmation_verified")
+        )
 
         if state.mode == "human" and not _is_return_to_bot_command(message.text):
             self._record_event(message.conversation_id, "human_mode_suppressed", {})
@@ -325,7 +330,7 @@ class ConversationOrchestrator:
                             risk_level=action.safety_level,
                         ),
                         message,
-                        confirmed=bool(message.media.get("confirmed")),
+                        confirmed=bool(message.media.get("confirmation_verified")),
                         flags=state.flags,
                     )
                 )
@@ -362,12 +367,20 @@ class ConversationOrchestrator:
         )
 
         with _measure(timings, "renderer_ms"):
-            rendered = render_conversation_reply(
-                action,
-                state,
-                message.channel,
-                tool_results,
-            )
+            if message.media.get("suppress_visible_copy"):
+                rendered = RenderedReply(
+                    text="",
+                    channel=message.channel,
+                    reply_key=action.reply_key,
+                    visibility="suppressed",
+                )
+            else:
+                rendered = render_conversation_reply(
+                    action,
+                    state,
+                    message.channel,
+                    tool_results,
+                )
         self._record_event(
             message.conversation_id,
             "rendered_reply",

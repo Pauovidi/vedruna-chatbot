@@ -90,6 +90,8 @@ def _render_text(
         return _render_slots(tool_result, channel)
     if reply_key == "vedruna_creating_appointment":
         return "Voy a intentar crear la cita."
+    if reply_key == "vedruna_confirmation_required":
+        return "Antes de completar esa gestion necesito que me lo confirmes claramente."
     if reply_key == "vedruna_confirm_appointment":
         return _render_confirmation(tool_result)
     if reply_key == "vedruna_create_dry_run_notice":
