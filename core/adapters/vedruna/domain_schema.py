@@ -43,6 +43,7 @@ CLINICS: dict[str, dict[str, Any]] = {
             "martes y jueves de 09:30 a 13:30 y de 15:30 a 19:30, "
             "y viernes de 09:00 a 17:00"
         ),
+        "open_weekdays": {1, 3, 4},
         "allowed_services": {Service.PODOLOGIA.value},
         "requires_insurance": True,
     },
@@ -51,6 +52,7 @@ CLINICS: dict[str, dict[str, Any]] = {
         "address": "Avenida Santa Isabel numero 82, local, 50016 Zaragoza",
         "phone": "976582768",
         "hours": "lunes y miercoles de 09:30 a 13:30 y de 15:30 a 19:30",
+        "open_weekdays": {0, 2},
         "allowed_services": {
             Service.QUIROPODIA.value,
             Service.ESTUDIO_BIOMECANICO.value,
@@ -78,6 +80,22 @@ WEEKDAY_MAP = {
     "miercoles": "wednesday",
     "jueves": "thursday",
     "viernes": "friday",
+}
+
+WEEKDAY_INDEX = {
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+}
+
+WEEKDAY_NAMES_ES = {
+    0: "lunes",
+    1: "martes",
+    2: "miercoles",
+    3: "jueves",
+    4: "viernes",
 }
 
 
@@ -185,6 +203,31 @@ def clinic_phone(clinic: str | None) -> str:
 
 def clinic_address(clinic: str | None) -> str:
     return CLINICS.get(clinic or "", {}).get("address", "")
+
+
+def clinic_is_open_on_weekday(clinic: str | None, weekday: int) -> bool:
+    open_weekdays = CLINICS.get(clinic or "", {}).get("open_weekdays", set())
+    return weekday in open_weekdays
+
+
+def clinic_open_weekdays_text(clinic: str | None) -> str:
+    names = [
+        WEEKDAY_NAMES_ES[weekday]
+        for weekday in sorted(CLINICS.get(clinic or "", {}).get("open_weekdays", set()))
+    ]
+    if len(names) < 2:
+        return "".join(names)
+    if len(names) == 2:
+        return " y ".join(names)
+    return f"{', '.join(names[:-1])} y {names[-1]}"
+
+
+def weekday_index(value: str | None) -> int | None:
+    return WEEKDAY_INDEX.get(value or "")
+
+
+def weekday_name_es(weekday: int | None) -> str | None:
+    return WEEKDAY_NAMES_ES.get(weekday)
 
 
 def service_allowed(clinic: str | None, service: str | None) -> bool:

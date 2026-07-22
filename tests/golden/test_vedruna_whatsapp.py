@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from tests.vedruna_helpers import make_vedruna_orchestrator, turn
 
 
@@ -92,8 +94,28 @@ def test_full_booking_dry_run_offers_slots_but_does_not_confirm_real_appointment
     assert confirmed.tool_results[0].status == "dry_run"
     state = store.load_state(conversation_id, "vedruna")
     assert state.slots["selected_slot_id"] == "dry-madre_vedruna-1"
-    assert state.slots["selected_slot_date"] == "07/07/2026"
+    assert datetime.strptime(state.slots["selected_slot_date"], "%d/%m/%Y").weekday() == 1
     assert state.slots["selected_slot_time"] == "10:00"
+
+
+def test_booking_does_not_offer_madre_vedruna_on_monday() -> None:
+    orchestrator, _store = make_vedruna_orchestrator()
+    conversation_id = "v-madre-closed-monday"
+    for text in [
+        "quiero cita en Madre Vedruna para podologia",
+        "particular",
+        "me llamo Ana Perez",
+        "600111222",
+        "dolor en una una",
+    ]:
+        turn(orchestrator, text, conversation_id=conversation_id)
+
+    result = turn(orchestrator, "el lunes por la manana", conversation_id=conversation_id)
+
+    assert result.reply_key == "vedruna_offer_slots"
+    assert "no atendemos los lunes" in result.reply_text.lower()
+    assert "martes, jueves y viernes" in result.reply_text.lower()
+    assert "Opcion" not in result.reply_text
 
 
 def test_cancel_lookup_preserves_flow_and_dry_run_never_cancels_real_appointment() -> None:

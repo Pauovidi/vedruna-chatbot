@@ -3,14 +3,20 @@ from __future__ import annotations
 import base64
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 from urllib import request
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
-from core.adapters.vedruna.domain_schema import Clinic, clinic_address
+from core.adapters.vedruna.domain_schema import (
+    Clinic,
+    clinic_address,
+    clinic_is_open_on_weekday,
+    weekday_index,
+    weekday_name_es,
+)
 from core.config import Settings
 from core.llm.schemas import ToolCallRequest, ToolResult
 from core.observability.redaction import redact_payload
@@ -133,14 +139,30 @@ class RPAAppointmentClient:
         )
 
     def search_availability(self, arguments: dict[str, Any]) -> ToolResult:
+        clinic = str(arguments.get("clinic") or Clinic.MADRE_VEDRUNA.value)
+        requested_weekday = _requested_weekday(arguments)
+        if (
+            requested_weekday is not None
+            and not clinic_is_open_on_weekday(clinic, requested_weekday)
+        ):
+            return _availability_without_slots(
+                clinic=clinic,
+                dry_run=self.settings.rpa_dry_run,
+                reason="clinic_closed_on_requested_day",
+                requested_weekday=requested_weekday,
+            )
         if self.settings.rpa_dry_run:
-            clinic = str(arguments.get("clinic") or Clinic.MADRE_VEDRUNA.value)
-            slots = _fixture_slots(clinic)
+            slots = _fixture_slots(clinic, arguments)
             return ToolResult(
                 name="rpa_search_availability",
                 status="success",
                 user_safe_summary="Disponibilidad simulada para pruebas.",
-                data={"ok": True, "dry_run": True, "slots": slots},
+                data={
+                    "ok": True,
+                    "dry_run": True,
+                    "slots": slots,
+                    "clinic": clinic,
+                },
             )
         payload = _availability_payload(arguments)
         data = self._post_json("/appointments/availability/search", payload)
@@ -299,10 +321,19 @@ def get_vedruna_tool_handlers(settings: Settings | None = None) -> dict[str, Too
     }
 
 
-def _fixture_slots(clinic: str) -> list[dict[str, str]]:
-    start = datetime(2026, 7, 7, 10, 0, tzinfo=timezone(timedelta(hours=2)))
-    if clinic == Clinic.SANTA_ISABEL.value:
-        start = datetime(2026, 7, 8, 16, 0, tzinfo=timezone(timedelta(hours=2)))
+def _fixture_slots(clinic: str, arguments: dict[str, Any]) -> list[dict[str, str]]:
+    requested_weekday = _requested_weekday(arguments)
+    start_date = _next_open_date(clinic, requested_weekday)
+    start_hour = 16 if clinic == Clinic.SANTA_ISABEL.value else 10
+    start = datetime(
+        start_date.year,
+        start_date.month,
+        start_date.day,
+        start_hour,
+        0,
+        tzinfo=ZoneInfo("Europe/Madrid"),
+    )
+    service = str(arguments.get("service") or "podologia")
     return [
         {
             "slot_id": f"dry-{clinic}-1",
@@ -312,7 +343,7 @@ def _fixture_slots(clinic: str) -> list[dict[str, str]]:
             "start": start.isoformat(),
             "end": (start + timedelta(minutes=20)).isoformat(),
             "clinic": clinic,
-            "service": "podologia",
+            "service": service,
             "address": clinic_address(clinic),
         },
         {
@@ -323,7 +354,7 @@ def _fixture_slots(clinic: str) -> list[dict[str, str]]:
             "start": (start + timedelta(minutes=20)).isoformat(),
             "end": (start + timedelta(minutes=40)).isoformat(),
             "clinic": clinic,
-            "service": "podologia",
+            "service": service,
             "address": clinic_address(clinic),
         },
     ]
@@ -359,6 +390,18 @@ def _availability_result(arguments: dict[str, Any], data: dict[str, Any]) -> Too
         )
         for slot_time in raw_slots
     ]
+    valid_slots = [
+        slot
+        for slot in normalized_slots
+        if _slot_is_on_clinic_open_day(slot, clinic)
+    ]
+    if normalized_slots and not valid_slots:
+        return _availability_without_slots(
+            clinic=clinic,
+            dry_run=False,
+            reason="clinic_closed_on_returned_day",
+            requested_weekday=_requested_weekday(arguments),
+        )
     return ToolResult(
         name="rpa_search_availability",
         status="success",
@@ -369,7 +412,7 @@ def _availability_result(arguments: dict[str, Any], data: dict[str, Any]) -> Too
             "date": date_value,
             "dateISO": date_iso,
             "dateReadable": data.get("dateReadable"),
-            "slots": normalized_slots,
+            "slots": valid_slots,
         },
     )
 
@@ -641,7 +684,70 @@ def _rpa_date(value: Any) -> str | None:
         return value
     if re_match_date_iso(value):
         return _iso_to_ddmmyyyy(value)
+    requested_weekday = weekday_index(value)
+    if requested_weekday is not None:
+        next_date = _next_date_for_weekday(requested_weekday)
+        return next_date.strftime("%d/%m/%Y")
     return None
+
+
+def _requested_weekday(arguments: dict[str, Any]) -> int | None:
+    for key in ("date", "date_preference"):
+        value = arguments.get(key)
+        if not isinstance(value, str) or not value:
+            continue
+        named_weekday = weekday_index(value)
+        if named_weekday is not None:
+            return named_weekday
+        date_iso = _date_to_iso(value)
+        if date_iso:
+            return datetime.fromisoformat(date_iso).weekday()
+    return None
+
+
+def _next_open_date(clinic: str, requested_weekday: int | None) -> datetime.date:
+    if requested_weekday is not None:
+        return _next_date_for_weekday(requested_weekday)
+    today = datetime.now(ZoneInfo("Europe/Madrid")).date()
+    for offset in range(7):
+        candidate = today + timedelta(days=offset)
+        if clinic_is_open_on_weekday(clinic, candidate.weekday()):
+            return candidate
+    raise ValueError(f"No open weekdays configured for {clinic}")
+
+
+def _next_date_for_weekday(requested_weekday: int) -> datetime.date:
+    today = datetime.now(ZoneInfo("Europe/Madrid")).date()
+    return today + timedelta(days=(requested_weekday - today.weekday()) % 7)
+
+
+def _slot_is_on_clinic_open_day(slot: dict[str, str], clinic: str) -> bool:
+    date_iso = slot.get("dateISO") or _date_to_iso(slot.get("date", ""))
+    if not date_iso:
+        return True
+    return clinic_is_open_on_weekday(clinic, datetime.fromisoformat(date_iso).weekday())
+
+
+def _availability_without_slots(
+    *,
+    clinic: str,
+    dry_run: bool,
+    reason: str,
+    requested_weekday: int | None,
+) -> ToolResult:
+    return ToolResult(
+        name="rpa_search_availability",
+        status="success",
+        user_safe_summary="No hay disponibilidad compatible con el horario de la clinica.",
+        data={
+            "ok": True,
+            "dry_run": dry_run,
+            "slots": [],
+            "clinic": clinic,
+            "availability_reason": reason,
+            "requested_weekday": weekday_name_es(requested_weekday),
+        },
+    )
 
 
 def _date_to_iso(value: str) -> str | None:

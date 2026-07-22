@@ -7,6 +7,7 @@ from core.adapters.vedruna.domain_schema import (
     Clinic,
     clinic_address,
     clinic_label,
+    clinic_open_weekdays_text,
     clinic_phone,
 )
 from core.conversation.actions import ConversationAction
@@ -192,6 +193,22 @@ def _render_text(
 def _render_slots(tool_result: ToolResult | None, channel: str) -> str:
     slots = _tool_slots(tool_result)
     if not slots:
+        if tool_result and tool_result.data.get("availability_reason") in {
+            "clinic_closed_on_requested_day",
+            "clinic_closed_on_returned_day",
+        }:
+            clinic = str(tool_result.data.get("clinic") or "")
+            requested_day = tool_result.data.get("requested_weekday")
+            if requested_day:
+                return (
+                    f"En {clinic_label(clinic)} no atendemos los {requested_day}. "
+                    f"Tenemos consulta los {clinic_open_weekdays_text(clinic)}. "
+                    "Que dia de esos te viene mejor?"
+                )
+            return (
+                f"En {clinic_label(clinic)} solo atendemos los "
+                f"{clinic_open_weekdays_text(clinic)}. Que dia te viene mejor?"
+            )
         return "No he encontrado huecos para esa preferencia. Probamos con otra franja?"
     first_two = slots[:2] if channel == "voice" else slots[:3]
     parts = []
