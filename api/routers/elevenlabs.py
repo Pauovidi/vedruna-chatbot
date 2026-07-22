@@ -62,10 +62,10 @@ def elevenlabs_chat_completions(
         # ElevenLabs' connection test sends a probe message but no stable
         # identifier. Return only a valid empty stream: never route an
         # anonymous probe into clinical state or RPA operations.
-        return _empty_completion_stream(body)
+        return _empty_completion_stream(body, emit_initial_buffer=True)
     canonical_conversation_id = f"elevenlabs:{stable_conversation_id}"
     if not user_text:
-        return _empty_completion_stream(body)
+        return _empty_completion_stream(body, emit_initial_buffer=False)
     message = IncomingMessage(
         channel="voice",
         conversation_id=canonical_conversation_id,
@@ -89,13 +89,15 @@ def elevenlabs_chat_completions(
 
 def _empty_completion_stream(
     body: ElevenLabsChatCompletionRequest,
+    *,
+    emit_initial_buffer: bool,
 ) -> StreamingResponse:
     return StreamingResponse(
         completion_events(
             lambda: None,
             model=body.model,
             available_tools=body.tools,
-            emit_initial_buffer=False,
+            emit_initial_buffer=emit_initial_buffer,
         ),
         media_type="text/event-stream",
         headers={

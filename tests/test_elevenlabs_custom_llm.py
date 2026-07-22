@@ -187,6 +187,7 @@ def test_custom_llm_accepts_a_stateless_elevenlabs_connection_check(monkeypatch)
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
+    assert "Un momento, por favor" in response.text
     assert response.text.endswith("data: [DONE]\n\n")
 
 
