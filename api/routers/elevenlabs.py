@@ -58,26 +58,14 @@ def elevenlabs_chat_completions(
     _require_auth(authorization, settings.elevenlabs_custom_llm_api_key)
     user_text = latest_user_text(body.messages)
     stable_conversation_id = conversation_id or body.user_id
-    if not stable_conversation_id and user_text:
-        raise HTTPException(status_code=400, detail="missing_conversation_id")
-    # ElevenLabs' connection check has neither a user turn nor a conversation
-    # identifier. Keep that probe stateless while requiring an ID for real turns.
-    stable_conversation_id = stable_conversation_id or "connection-check"
+    if not stable_conversation_id:
+        # ElevenLabs' connection test sends a probe message but no stable
+        # identifier. Return only a valid empty stream: never route an
+        # anonymous probe into clinical state or RPA operations.
+        return _empty_completion_stream(body)
     canonical_conversation_id = f"elevenlabs:{stable_conversation_id}"
     if not user_text:
-        return StreamingResponse(
-            completion_events(
-                lambda: None,
-                model=body.model,
-                available_tools=body.tools,
-                emit_initial_buffer=False,
-            ),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",
-            },
-        )
+        return _empty_completion_stream(body)
     message = IncomingMessage(
         channel="voice",
         conversation_id=canonical_conversation_id,
@@ -90,6 +78,24 @@ def elevenlabs_chat_completions(
             lambda: get_orchestrator().handle_turn(message),
             model=body.model,
             available_tools=body.tools,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _empty_completion_stream(
+    body: ElevenLabsChatCompletionRequest,
+) -> StreamingResponse:
+    return StreamingResponse(
+        completion_events(
+            lambda: None,
+            model=body.model,
+            available_tools=body.tools,
+            emit_initial_buffer=False,
         ),
         media_type="text/event-stream",
         headers={

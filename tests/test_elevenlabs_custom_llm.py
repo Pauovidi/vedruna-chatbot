@@ -90,14 +90,16 @@ def test_custom_llm_requires_auth(monkeypatch) -> None:
     assert response.status_code == 401
 
 
-def test_custom_llm_requires_stable_conversation_id(monkeypatch) -> None:
+def test_custom_llm_treats_anonymous_messages_as_safe_connection_probes(monkeypatch) -> None:
     client = _client(monkeypatch)
     response = client.post(
         "/v1/chat/completions",
         headers={"Authorization": "Bearer test-custom-llm-key"},
         json={"messages": [{"role": "user", "content": "hola"}]},
     )
-    assert response.status_code == 400
+    assert response.status_code == 200
+    assert "Clinica Madre Vedruna" not in response.text
+    assert response.text.endswith("data: [DONE]\n\n")
 
 
 def test_custom_llm_accepts_openai_standard_user_identifier(monkeypatch) -> None:
