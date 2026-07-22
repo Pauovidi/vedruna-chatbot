@@ -174,6 +174,20 @@ def test_custom_llm_ignores_requests_without_a_current_user_message(monkeypatch)
     assert "Para que clinica" not in response.text
 
 
+def test_custom_llm_accepts_a_stateless_elevenlabs_connection_check(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    response = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer test-custom-llm-key"},
+        json={"model": "vedruna-core", "messages": [], "stream": True},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert response.text.endswith("data: [DONE]\n\n")
+
+
 def test_custom_llm_uses_structured_nlu_without_remote_round_trip(monkeypatch) -> None:
     def remote_nlu_must_not_run(*args, **kwargs):  # type: ignore[no-untyped-def]
         raise AssertionError("ElevenLabs custom LLM must not invoke remote NLU")

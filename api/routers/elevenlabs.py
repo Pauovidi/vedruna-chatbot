@@ -56,10 +56,13 @@ def elevenlabs_chat_completions(
 ) -> StreamingResponse:
     settings = get_settings()
     _require_auth(authorization, settings.elevenlabs_custom_llm_api_key)
-    stable_conversation_id = conversation_id or body.user_id
-    if not stable_conversation_id:
-        raise HTTPException(status_code=400, detail="missing_conversation_id")
     user_text = latest_user_text(body.messages)
+    stable_conversation_id = conversation_id or body.user_id
+    if not stable_conversation_id and user_text:
+        raise HTTPException(status_code=400, detail="missing_conversation_id")
+    # ElevenLabs' connection check has neither a user turn nor a conversation
+    # identifier. Keep that probe stateless while requiring an ID for real turns.
+    stable_conversation_id = stable_conversation_id or "connection-check"
     canonical_conversation_id = f"elevenlabs:{stable_conversation_id}"
     if not user_text:
         return StreamingResponse(
