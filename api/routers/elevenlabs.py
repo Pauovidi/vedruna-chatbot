@@ -57,7 +57,7 @@ def elevenlabs_chat_completions(
     settings = get_settings()
     _require_auth(authorization, settings.elevenlabs_custom_llm_api_key)
     user_text = latest_user_text(body.messages)
-    stable_conversation_id = conversation_id or body.user_id
+    stable_conversation_id = _stable_conversation_id(body, conversation_id)
     if not stable_conversation_id:
         # ElevenLabs' connection test sends a probe message but no stable
         # identifier. Return only a valid empty stream: never route an
@@ -105,6 +105,37 @@ def _empty_completion_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+def _stable_conversation_id(
+    body: ElevenLabsChatCompletionRequest,
+    header_conversation_id: str | None,
+) -> str | None:
+    """Accept the documented and dashboard-configurable ElevenLabs ID forms."""
+    candidates: list[Any] = [header_conversation_id, body.user_id]
+    extra = body.model_extra or {}
+    for key in (
+        "conversation_id",
+        "conversationId",
+        "system__conversation_id",
+        "system_conversation_id",
+    ):
+        candidates.append(extra.get(key))
+    for container_key in ("elevenlabs_extra_body", "extra_body"):
+        container = extra.get(container_key)
+        if not isinstance(container, dict):
+            continue
+        for key in (
+            "conversation_id",
+            "conversationId",
+            "system__conversation_id",
+            "system_conversation_id",
+        ):
+            candidates.append(container.get(key))
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()[:160]
+    return None
 
 
 @router.post("/v1/agent/turn", response_model=NativeAgentAuthority)

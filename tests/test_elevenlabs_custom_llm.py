@@ -119,6 +119,25 @@ def test_custom_llm_accepts_openai_standard_user_identifier(monkeypatch) -> None
     assert "chat.completion.chunk" in response.text
 
 
+def test_custom_llm_accepts_elevenlabs_extra_body_conversation_identifier(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    response = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer test-custom-llm-key"},
+        json={
+            "model": "vedruna-core",
+            "elevenlabs_extra_body": {
+                "system__conversation_id": "eleven-standard-conversation-id",
+            },
+            "messages": [{"role": "user", "content": "quiero una cita"}],
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Madre Vedruna" in response.text
+
+
 def test_custom_llm_streams_renderer_copy(monkeypatch) -> None:
     client = _client(monkeypatch)
     response = _request(client, text="hola")
