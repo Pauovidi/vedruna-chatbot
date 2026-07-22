@@ -6,10 +6,13 @@
 RPA_BASE_URL=https://vedruna-rpa-rpa.ddxo6v.easypanel.host
 RPA_API_KEY=
 RPA_DRY_RUN=true
+RPA_LIVE_READS_ENABLED=false
 RPA_TIMEOUT_MS=12000
 ```
 
 `RPA_DRY_RUN=true` is the default and suppresses real create/cancel/reschedule writes.
+`RPA_LIVE_READS_ENABLED=true` may be combined with dry-run mode to consult real
+availability while keeping every appointment write suppressed.
 
 ## Auth
 

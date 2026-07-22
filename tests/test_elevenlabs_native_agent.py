@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.dependencies import (
@@ -120,6 +121,38 @@ def test_native_agent_booking_needs_server_verified_confirmation(monkeypatch) ->
     assert confirmed_body["rpa_mode"] == "dry_run"
     assert confirmed_body["tool_results"][0]["status"] == "dry_run"
     assert confirmed_body["next_step"] == "report_dry_run_suppressed"
+
+
+@pytest.mark.parametrize(
+    "utterance",
+    ["A las dieciseis veinte", "La dos", "Opcion dos"],
+)
+def test_native_agent_resolves_natural_spoken_slot_selection(
+    monkeypatch,
+    utterance: str,
+) -> None:
+    client = _client(monkeypatch)
+    conversation_id = f"native-slot-{utterance}"
+    for turn in [
+        "Quiero cita en Santa Isabel para una ecografia",
+        "Me llamo Ana Perez",
+        "600111222",
+        "Tengo dolor en el talon",
+        "Miercoles por la tarde",
+    ]:
+        response = _turn(client, turn, conversation_id=conversation_id)
+        assert response.status_code == 200
+
+    selected = _turn(client, utterance, conversation_id=conversation_id)
+    body = selected.json()
+
+    assert body["requires_explicit_confirmation"] is True
+    assert body["next_step"] == "request_explicit_confirmation"
+    state = get_state_manager().load(
+        f"elevenlabs-native:{conversation_id}",
+        "vedruna",
+    )
+    assert state.slots["selected_slot_time"] == "16:20"
 
 
 def test_native_agent_cannot_submit_a_verified_confirmation(monkeypatch) -> None:

@@ -151,7 +151,7 @@ class RPAAppointmentClient:
                 reason="clinic_closed_on_requested_day",
                 requested_weekday=requested_weekday,
             )
-        if self.settings.rpa_dry_run:
+        if self.settings.rpa_dry_run and not self.settings.rpa_live_reads_enabled:
             slots = _fixture_slots(clinic, arguments)
             return ToolResult(
                 name="rpa_search_availability",
@@ -188,7 +188,7 @@ class RPAAppointmentClient:
         return _create_result(arguments, data)
 
     def find_appointment(self, arguments: dict[str, Any]) -> ToolResult:
-        if self.settings.rpa_dry_run:
+        if self.settings.rpa_dry_run and not self.settings.rpa_live_reads_enabled:
             clinic = str(arguments.get("clinic") or Clinic.MADRE_VEDRUNA.value)
             return ToolResult(
                 name="rpa_find_appointment",

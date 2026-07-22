@@ -395,25 +395,113 @@ def _selected_slot_from_message(
     index: int | None = None
     if dtmf in {"1", "2"}:
         index = int(dtmf)
-    elif normalized in {"1", "primera", "la primera", "opcion 1", "opcion uno"}:
+    elif normalized in {"1", "primera", "la primera", "opcion 1", "opcion uno"} or re.search(
+        r"\b(?:opcion|la)\s+(?:1|uno|primera)\b", normalized
+    ):
         index = 1
-    elif normalized in {"2", "segunda", "la segunda", "opcion 2", "opcion dos"}:
+    elif normalized in {"2", "segunda", "la segunda", "opcion 2", "opcion dos"} or re.search(
+        r"\b(?:opcion|la)\s+(?:2|dos|segunda)\b", normalized
+    ):
         index = 2
-    if index is None:
-        return None
     tool_state = context.get("tool_state")
     if isinstance(tool_state, dict):
         offered = tool_state.get("last_offered_slots")
-        if isinstance(offered, list) and 0 < index <= len(offered):
+        if isinstance(offered, list) and index is not None and 0 < index <= len(offered):
             candidate = offered[index - 1]
             if isinstance(candidate, dict) and candidate.get("slot_id"):
-                return {
-                    "selected_slot_id": str(candidate["slot_id"]),
-                    "selected_slot_date": candidate.get("date"),
-                    "selected_slot_date_iso": candidate.get("dateISO"),
-                    "selected_slot_time": candidate.get("time"),
-                }
+                return _selected_slot(candidate)
+        if isinstance(offered, list):
+            candidates = [
+                candidate
+                for candidate in offered
+                if isinstance(candidate, dict)
+                and candidate.get("slot_id")
+                and _message_matches_slot(normalized, candidate)
+            ]
+            if len(candidates) == 1:
+                return _selected_slot(candidates[0])
+    if index is None:
+        return None
     return {"selected_slot_id": f"selected_option_{index}"}
+
+
+def _selected_slot(candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "selected_slot_id": str(candidate["slot_id"]),
+        "selected_slot_date": candidate.get("date"),
+        "selected_slot_date_iso": candidate.get("dateISO"),
+        "selected_slot_time": candidate.get("time"),
+    }
+
+
+def _message_matches_slot(normalized: str, candidate: dict[str, Any]) -> bool:
+    time_value = str(candidate.get("time") or "").strip()
+    if not time_value or ":" not in time_value:
+        return False
+    hour_text, minute_text = time_value.split(":", 1)
+    try:
+        hour = int(hour_text)
+        minute = int(minute_text)
+    except ValueError:
+        return False
+
+    aliases = {
+        f"{hour}:{minute:02d}",
+        f"{hour} {minute:02d}",
+        f"{_spanish_number(hour)} {_spanish_number(minute)}",
+        f"{_spanish_number(hour)} y {_spanish_number(minute)}",
+    }
+    if hour > 12:
+        twelve_hour = hour - 12
+        aliases.update(
+            {
+                f"{_spanish_number(twelve_hour)} {_spanish_number(minute)}",
+                f"{_spanish_number(twelve_hour)} y {_spanish_number(minute)}",
+            }
+        )
+    return any(alias in normalized for alias in aliases)
+
+
+def _spanish_number(value: int) -> str:
+    direct = {
+        0: "cero",
+        1: "uno",
+        2: "dos",
+        3: "tres",
+        4: "cuatro",
+        5: "cinco",
+        6: "seis",
+        7: "siete",
+        8: "ocho",
+        9: "nueve",
+        10: "diez",
+        11: "once",
+        12: "doce",
+        13: "trece",
+        14: "catorce",
+        15: "quince",
+        16: "dieciseis",
+        17: "diecisiete",
+        18: "dieciocho",
+        19: "diecinueve",
+        20: "veinte",
+        21: "veintiuno",
+        22: "veintidos",
+        23: "veintitres",
+        24: "veinticuatro",
+        25: "veinticinco",
+        26: "veintiseis",
+        27: "veintisiete",
+        28: "veintiocho",
+        29: "veintinueve",
+        30: "treinta",
+        40: "cuarenta",
+        50: "cincuenta",
+    }
+    if value in direct:
+        return direct[value]
+    tens, units = divmod(value, 10)
+    return f"{direct[tens * 10]} y {direct[units]}"
 
 
 def _looks_like_consultation_reason(normalized: str, service: str | None) -> bool:

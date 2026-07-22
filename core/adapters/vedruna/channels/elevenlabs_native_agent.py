@@ -31,7 +31,7 @@ class NativeAgentAuthority(BaseModel):
     offered_slots: list[dict[str, str]] = Field(default_factory=list)
     requires_explicit_confirmation: bool = False
     handoff_required: bool = False
-    rpa_mode: Literal["dry_run", "live"]
+    rpa_mode: Literal["dry_run", "live_read_only", "live"]
     tool_results: list[NativeAgentToolResult] = Field(default_factory=list)
     constraints: list[str] = Field(
         default_factory=lambda: [
@@ -83,7 +83,13 @@ def build_native_agent_authority(
         offered_slots=_offered_slots(state),
         requires_explicit_confirmation=confirmation_required,
         handoff_required=result.requires_human,
-        rpa_mode="dry_run" if settings.rpa_dry_run else "live",
+        rpa_mode=(
+            "live_read_only"
+            if settings.rpa_dry_run and settings.rpa_live_reads_enabled
+            else "dry_run"
+            if settings.rpa_dry_run
+            else "live"
+        ),
         tool_results=tool_results,
     )
 

@@ -76,11 +76,11 @@ def _render_text(
     if reply_key == "vedruna_ask_insurance":
         return "Para Madre Vedruna, vienes por Sanitas, Generali o particular?"
     if reply_key == "vedruna_ask_first_name":
-        return "Perfecto. Para continuar, dime tu nombre, por favor."
+        return "Perfecto. Para continuar, dime tu nombre."
     if reply_key == "vedruna_ask_last_names":
-        return "Gracias. Ahora dime tus apellidos, por favor."
+        return "Gracias. Ahora dime tus apellidos."
     if reply_key == "vedruna_ask_phone":
-        return "Gracias. Dime un telefono de contacto, por favor."
+        return "Gracias. Dime un telefono de contacto."
     if reply_key == "vedruna_ask_reason":
         return "Para dejarlo bien anotado, cual es el motivo de la consulta?"
     if reply_key == "vedruna_ask_date":

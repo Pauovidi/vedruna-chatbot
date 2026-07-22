@@ -18,6 +18,7 @@ Keep these values in the service environment:
 ELEVENLABS_NATIVE_AGENT_ENABLED=true
 ELEVENLABS_AGENT_API_KEY=<new-long-random-secret>
 RPA_DRY_RUN=true
+RPA_LIVE_READS_ENABLED=false
 VOICE_TRANSFER_ENABLED=false
 ```
 
@@ -57,7 +58,7 @@ The response contains no patient-facing copy. Important fields are:
 - `offered_slots`: slots returned by the core, if any.
 - `requires_explicit_confirmation`: true before create, cancel, or reschedule.
 - `handoff_required`: true when the core requires a clinic contact.
-- `rpa_mode`: `dry_run` or `live`.
+- `rpa_mode`: `dry_run`, `live_read_only` or `live`.
 - `tool_results`: server-side result only; do not call an action successful
   unless its status is `success` and the core says it is confirmed.
 

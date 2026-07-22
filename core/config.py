@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     )
     rpa_api_key: str | None = Field(default=None, alias="RPA_API_KEY")
     rpa_dry_run: bool = Field(default=True, alias="RPA_DRY_RUN")
+    rpa_live_reads_enabled: bool = Field(
+        default=False,
+        alias="RPA_LIVE_READS_ENABLED",
+    )
     rpa_timeout_ms: int = Field(default=12000, alias="RPA_TIMEOUT_MS")
     clinic_madre_vedruna_phone: str = Field(
         default="976795117", alias="CLINIC_MADRE_VEDRUNA_PHONE"
@@ -157,6 +161,7 @@ class Settings(BaseSettings):
             "rpa_base_url_present": bool(self.rpa_base_url),
             "rpa_api_key_present": bool(self.rpa_api_key),
             "rpa_dry_run": self.rpa_dry_run,
+            "rpa_live_reads_enabled": self.rpa_live_reads_enabled,
             "admin_panel_api_key_present": bool(self.admin_panel_api_key),
             "pii_masking_enabled": self.pii_masking_enabled,
         }

@@ -39,6 +39,42 @@ def test_rpa_availability_returns_dry_run_slots() -> None:
     assert result.data["slots"][0]["slot_id"].startswith("dry-madre_vedruna")
 
 
+def test_rpa_live_reads_can_be_enabled_while_writes_stay_dry_run(monkeypatch) -> None:
+    captured: list[str] = []
+
+    def fake_urlopen(req, timeout):
+        captured.append(req.full_url)
+        return FakeResponse(
+            {
+                "date": "08/07/2026",
+                "dateISO": "2026-07-08",
+                "slots": ["12:30"],
+            }
+        )
+
+    monkeypatch.setattr(rpa_appointments.request, "urlopen", fake_urlopen)
+    client = RPAAppointmentClient(
+        Settings(
+            OPENAI_API_KEY="",
+            DATABASE_URL="",
+            RPA_DRY_RUN=True,
+            RPA_LIVE_READS_ENABLED=True,
+        )
+    )
+
+    availability = client.search_availability(
+        {"clinic": "santa_isabel", "service": "quiropodia"}
+    )
+    creation = client.create_appointment({"patient": {"phone": "600111222"}})
+
+    assert captured[0].endswith("/appointments/availability/search")
+    assert availability.status == "success"
+    assert availability.data["dry_run"] is False
+    assert availability.data["slots"][0]["time"] == "12:30"
+    assert creation.status == "dry_run"
+    assert creation.internal_code == "dry_run_write_suppressed"
+
+
 def test_rpa_availability_rejects_closed_day_before_calling_rpa() -> None:
     client = RPAAppointmentClient(
         Settings(OPENAI_API_KEY="", DATABASE_URL="", RPA_DRY_RUN=True)
