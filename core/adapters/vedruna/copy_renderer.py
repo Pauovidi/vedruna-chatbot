@@ -163,7 +163,7 @@ def _render_text(
     if reply_key == "vedruna_voice_transfer":
         return _render_voice_transfer(tool_result, context)
     if reply_key == "vedruna_ask_phone_for_lookup":
-        return "Dime el telefono asociado a la cita, por favor."
+        return "Dime el telefono asociado a la cita o el nombre y apellidos del paciente."
     if reply_key == "vedruna_lookup_recall":
         return "Voy a buscar tu cita."
     if reply_key == "vedruna_recall_result":

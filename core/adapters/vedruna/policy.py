@@ -151,7 +151,7 @@ def _cancellation_action(
     context: ConversationState,
     slots: dict[str, Any],
 ) -> ConversationAction:
-    if not slots.get("patient_phone"):
+    if not _has_lookup_identity(slots):
         return _ask(
             "vedruna_ask_phone_for_lookup",
             "patient_phone",
@@ -190,7 +190,7 @@ def _cancellation_action(
 
 
 def _reschedule_action(context: ConversationState, slots: dict[str, Any]) -> ConversationAction:
-    if not slots.get("patient_phone"):
+    if not _has_lookup_identity(slots):
         return _ask("vedruna_ask_phone_for_lookup", "patient_phone", flow="vedruna_reschedule")
     lookup = _last_lookup(context)
     if not lookup:
@@ -272,7 +272,7 @@ def _reschedule_availability_arguments(
 
 
 def _recall_action(context: ConversationState, slots: dict[str, Any]) -> ConversationAction:
-    if not slots.get("patient_phone"):
+    if not _has_lookup_identity(slots):
         return _ask("vedruna_ask_phone_for_lookup", "patient_phone", flow="vedruna_recall")
     return ConversationAction(
         action_type="call_tool",
@@ -472,6 +472,12 @@ def _lookup_arguments(context: ConversationState, slots: dict[str, Any]) -> dict
         "patient_last_names": slots.get("patient_last_names"),
         "conversation_id": context.conversation_id,
     }
+
+
+def _has_lookup_identity(slots: dict[str, Any]) -> bool:
+    if slots.get("patient_phone"):
+        return True
+    return bool(slots.get("patient_first_name") and slots.get("patient_last_names"))
 
 
 def _selected_slot_payload(

@@ -238,6 +238,40 @@ def test_reschedule_flow_dry_run_does_not_claim_real_modification() -> None:
     assert confirmed.tool_results[0].status == "dry_run"
 
 
+def test_reschedule_synonym_and_full_name_lookup_are_supported() -> None:
+    orchestrator, _store = make_vedruna_orchestrator()
+    conversation_id = "v-reschedule-by-name"
+
+    first = turn(
+        orchestrator,
+        "quiero reprogramar una cita",
+        conversation_id=conversation_id,
+    )
+    assert first.reply_key == "vedruna_ask_phone_for_lookup"
+    assert "nombre y apellidos" in first.reply_text.lower()
+
+    lookup = turn(
+        orchestrator,
+        "Lucas Prueba Automatizada",
+        conversation_id=conversation_id,
+    )
+
+    assert lookup.reply_key == "vedruna_reschedule_result"
+    assert lookup.tool_results[0].name == "rpa_find_appointment"
+    assert lookup.tool_results[0].data["dry_run"] is True
+
+
+def test_lookup_does_not_accept_a_single_name_as_unique_identity() -> None:
+    orchestrator, _store = make_vedruna_orchestrator()
+    conversation_id = "v-recall-single-name"
+
+    turn(orchestrator, "cuando tenia la cita", conversation_id=conversation_id)
+    result = turn(orchestrator, "Lucas", conversation_id=conversation_id)
+
+    assert result.reply_key == "vedruna_ask_phone_for_lookup"
+    assert result.tool_results == []
+
+
 def test_urgent_whatsapp_enters_safe_booking_flow_without_diagnosis() -> None:
     orchestrator, store = make_vedruna_orchestrator()
     result = turn(orchestrator, "es urgente, necesito cita")

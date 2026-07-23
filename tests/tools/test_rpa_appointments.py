@@ -75,6 +75,34 @@ def test_rpa_live_reads_can_be_enabled_while_writes_stay_dry_run(monkeypatch) ->
     assert creation.internal_code == "dry_run_write_suppressed"
 
 
+def test_rpa_find_supports_full_name_without_phone(monkeypatch) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def fake_urlopen(req, timeout):
+        captured.append(json.loads(req.data.decode()))
+        return FakeResponse({"success": True, "appointments": []})
+
+    monkeypatch.setattr(rpa_appointments.request, "urlopen", fake_urlopen)
+    client = RPAAppointmentClient(
+        Settings(
+            OPENAI_API_KEY="",
+            DATABASE_URL="",
+            RPA_DRY_RUN=True,
+            RPA_LIVE_READS_ENABLED=True,
+        )
+    )
+
+    result = client.find_appointment(
+        {
+            "patient_first_name": "Lucas",
+            "patient_last_names": "Prueba Automatizada",
+        }
+    )
+
+    assert captured == [{"name": "Lucas Prueba Automatizada"}]
+    assert result.internal_code == "rpa_appointment_not_found"
+
+
 def test_rpa_availability_rejects_closed_day_before_calling_rpa() -> None:
     client = RPAAppointmentClient(
         Settings(OPENAI_API_KEY="", DATABASE_URL="", RPA_DRY_RUN=True)

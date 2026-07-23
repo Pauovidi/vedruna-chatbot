@@ -482,9 +482,17 @@ def _create_result(arguments: dict[str, Any], data: dict[str, Any]) -> ToolResul
 
 def _find_payload(arguments: dict[str, Any]) -> dict[str, Any] | None:
     phone = str(arguments.get("phone") or arguments.get("patient_phone") or "").strip()
-    if not phone:
+    patient = arguments.get("patient")
+    if not isinstance(patient, dict):
+        patient = {}
+    name = _full_name(arguments, patient)
+    if not phone and not name:
         return None
-    payload: dict[str, Any] = {"phone": phone}
+    payload: dict[str, Any] = {}
+    if phone:
+        payload["phone"] = phone
+    if name:
+        payload["name"] = name
     date_value = _rpa_date(arguments.get("date") or arguments.get("date_preference"))
     if date_value:
         payload["date"] = date_value

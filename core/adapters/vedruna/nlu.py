@@ -225,7 +225,13 @@ def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) 
         return "cancel_appointment"
     if any(
         term in normalized
-        for term in ["modificar", "cambiar cita", "mover cita", "reagendar"]
+        for term in [
+            "modificar",
+            "cambiar cita",
+            "mover cita",
+            "reagendar",
+            "reprogramar",
+        ]
     ):
         return "reschedule_appointment"
     if any(
@@ -375,6 +381,19 @@ def _apply_contextual_pending_reply(
             " ".join(part.title() for part in clean_text.split()),
         )
         target_slots[pending_field] = {"slot": pending_field}
+        return
+
+    if pending_field == "patient_phone" and PERSON_REPLY_RE.fullmatch(clean_text):
+        parts = clean_text.split()
+        if len(parts) < 2:
+            return
+        slots.setdefault("patient_first_name", parts[0].title())
+        slots.setdefault(
+            "patient_last_names",
+            " ".join(part.title() for part in parts[1:]),
+        )
+        target_slots["patient_first_name"] = {"slot": "patient_first_name"}
+        target_slots["patient_last_names"] = {"slot": "patient_last_names"}
         return
 
     if pending_field == "consultation_reason" and 2 <= len(clean_text) <= 240:
