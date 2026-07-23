@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
@@ -167,14 +168,59 @@ def normalize_insurance(text: str) -> dict[str, str] | None:
 
 def normalize_date_preference(text: str) -> str | None:
     normalized = normalize_text(text)
-    for spanish, canonical in WEEKDAY_MAP.items():
-        if spanish in normalized:
-            return canonical
+    explicit_date = _explicit_date(normalized)
+    if explicit_date:
+        return explicit_date
     if "pasado manana" in normalized:
         return "relative_day_after_tomorrow"
-    if "manana" in normalized:
+    if "manana" in normalized and not any(
+        weekday in normalized for weekday in WEEKDAY_MAP
+    ):
         return "relative_tomorrow"
+    for spanish, canonical in WEEKDAY_MAP.items():
+        if spanish in normalized:
+            if "semana que viene" in normalized:
+                return f"next_week:{canonical}"
+            if any(
+                term in normalized
+                for term in (f"proximo {spanish}", f"proxima {spanish}")
+            ):
+                return f"next:{canonical}"
+            return canonical
     return None
+
+
+def _explicit_date(normalized: str) -> str | None:
+    iso_match = re.search(r"\b(\d{4})-(\d{1,2})-(\d{1,2})\b", normalized)
+    if iso_match:
+        candidate = "-".join(
+            (
+                iso_match.group(1),
+                iso_match.group(2).zfill(2),
+                iso_match.group(3).zfill(2),
+            )
+        )
+        try:
+            datetime.strptime(candidate, "%Y-%m-%d")
+        except ValueError:
+            return None
+        return candidate
+
+    es_match = re.search(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b", normalized)
+    if not es_match:
+        return None
+    candidate = "/".join(
+        (
+            es_match.group(1).zfill(2),
+            es_match.group(2).zfill(2),
+            es_match.group(3),
+        )
+    )
+    try:
+        datetime.strptime(candidate, "%d/%m/%Y")
+    except ValueError:
+        return None
+    return candidate
 
 
 def normalize_time_preference(text: str) -> str | None:

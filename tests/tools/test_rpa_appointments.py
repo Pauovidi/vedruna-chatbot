@@ -343,6 +343,20 @@ def test_rpa_mutua_mapping_sanitas_and_catalana_occident(monkeypatch) -> None:
     assert captured[1]["idMutua"] == 12
 
 
+def test_rpa_date_resolves_relative_and_next_week_preferences(monkeypatch) -> None:
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 7, 23, 10, 0, tzinfo=tz)
+
+    monkeypatch.setattr(rpa_appointments, "datetime", FixedDateTime)
+
+    assert rpa_appointments._rpa_date("relative_tomorrow") == "24/07/2026"
+    assert rpa_appointments._rpa_date("relative_day_after_tomorrow") == "25/07/2026"
+    assert rpa_appointments._rpa_date("next:thursday") == "30/07/2026"
+    assert rpa_appointments._rpa_date("next_week:monday") == "27/07/2026"
+
+
 def test_voice_transfer_disabled_does_not_call_twilio() -> None:
     handler = VoiceTransferHandler(
         Settings(OPENAI_API_KEY="", DATABASE_URL="", VOICE_TRANSFER_ENABLED=False)

@@ -683,6 +683,23 @@ def _rpa_date(value: Any) -> str | None:
         return value
     if re_match_date_iso(value):
         return _iso_to_ddmmyyyy(value)
+    today = datetime.now(ZoneInfo("Europe/Madrid")).date()
+    if value == "relative_tomorrow":
+        return (today + timedelta(days=1)).strftime("%d/%m/%Y")
+    if value == "relative_day_after_tomorrow":
+        return (today + timedelta(days=2)).strftime("%d/%m/%Y")
+    if value.startswith("next_week:"):
+        requested_weekday = weekday_index(value.split(":", 1)[1])
+        if requested_weekday is not None:
+            next_monday = today + timedelta(days=7 - today.weekday())
+            return (next_monday + timedelta(days=requested_weekday)).strftime("%d/%m/%Y")
+    if value.startswith("next:"):
+        requested_weekday = weekday_index(value.split(":", 1)[1])
+        if requested_weekday is not None:
+            return _next_date_for_weekday(
+                requested_weekday,
+                include_today=False,
+            ).strftime("%d/%m/%Y")
     requested_weekday = weekday_index(value)
     if requested_weekday is not None:
         next_date = _next_date_for_weekday(requested_weekday)
@@ -696,6 +713,8 @@ def _requested_weekday(arguments: dict[str, Any]) -> int | None:
         if not isinstance(value, str) or not value:
             continue
         named_weekday = weekday_index(value)
+        if named_weekday is None and ":" in value:
+            named_weekday = weekday_index(value.split(":", 1)[1])
         if named_weekday is not None:
             return named_weekday
         date_iso = _date_to_iso(value)
@@ -715,9 +734,16 @@ def _next_open_date(clinic: str, requested_weekday: int | None) -> datetime.date
     raise ValueError(f"No open weekdays configured for {clinic}")
 
 
-def _next_date_for_weekday(requested_weekday: int) -> datetime.date:
+def _next_date_for_weekday(
+    requested_weekday: int,
+    *,
+    include_today: bool = True,
+) -> datetime.date:
     today = datetime.now(ZoneInfo("Europe/Madrid")).date()
-    return today + timedelta(days=(requested_weekday - today.weekday()) % 7)
+    offset = (requested_weekday - today.weekday()) % 7
+    if offset == 0 and not include_today:
+        offset = 7
+    return today + timedelta(days=offset)
 
 
 def _slot_is_on_clinic_open_day(slot: dict[str, str], clinic: str) -> bool:
