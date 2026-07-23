@@ -7,7 +7,7 @@ from core.adapters.vedruna.domain_schema import normalize_text
 
 def is_explicit_confirmation(utterance: str) -> bool:
     normalized = re.sub(r"[^a-z0-9]+", " ", normalize_text(utterance)).strip()
-    return normalized in {
+    if normalized in {
         "si",
         "si confirmo",
         "confirmo",
@@ -15,4 +15,14 @@ def is_explicit_confirmation(utterance: str) -> bool:
         "confirmar",
         "de acuerdo confirmo",
         "adelante confirmo",
-    }
+    }:
+        return True
+    return bool(
+        re.fullmatch(
+            r"(?:si )?(?:confirmo|confirmar|confirmalo)"
+            r"(?: (?:la|esta|esa|mi))?"
+            r"(?: (?:cita|cancelacion|modificacion|reprogramacion))?"
+            r"(?: que quiero (?:cancelarla|modificarla|reprogramarla))?",
+            normalized,
+        )
+    )

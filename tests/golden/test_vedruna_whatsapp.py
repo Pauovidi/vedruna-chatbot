@@ -136,7 +136,7 @@ def test_full_booking_dry_run_offers_slots_but_does_not_confirm_real_appointment
     assert "Confirmamos tu cita" not in selected.reply_text
     confirmed = turn(
         orchestrator,
-        "si confirmo",
+        "si, confirmo esta cita",
         conversation_id=conversation_id,
         confirmed=True,
     )
@@ -190,7 +190,7 @@ def test_cancel_lookup_preserves_flow_and_dry_run_never_cancels_real_appointment
     assert "cancelado correctamente" not in cancelled.reply_text.lower()
     confirmed = turn(
         orchestrator,
-        "si confirmo",
+        "si, confirmo la cancelacion",
         conversation_id=conversation_id,
         confirmed=True,
     )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from core.adapters.vedruna.channels.confirmation import is_explicit_confirmation
 from core.adapters.vedruna.domain_schema import (
     normalize_clinic,
     normalize_date_preference,
@@ -208,9 +209,9 @@ def interpret_vedruna_message(
 
 def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) -> str:
     current_flow = context.get("active_flow") or context.get("current_flow")
-    if (
-        current_flow == "vedruna_cancellation"
-        and normalized in {"si", "sí", "s", "confirmo", "cancelala", "cancela"}
+    if current_flow == "vedruna_cancellation" and (
+        is_explicit_confirmation(normalized)
+        or normalized in {"s", "cancelala", "cancela"}
     ):
         return "confirm_cancel_appointment"
     if any(term in normalized for term in ["precio", "cuanto cuesta", "coste", "tarifa"]):
