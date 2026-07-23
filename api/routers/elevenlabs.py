@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from api.dependencies import get_orchestrator, get_state_manager
+from core.adapters.vedruna.channels.confirmation import is_explicit_confirmation
 from core.adapters.vedruna.channels.elevenlabs_custom_llm import (
     completion_events,
     latest_user_text,
@@ -16,7 +17,6 @@ from core.adapters.vedruna.channels.elevenlabs_native_agent import (
     NativeAgentAuthority,
     build_native_agent_authority,
 )
-from core.adapters.vedruna.domain_schema import normalize_text
 from core.config import get_settings
 from core.llm.schemas import IncomingMessage
 
@@ -156,7 +156,7 @@ def elevenlabs_native_agent_turn(
         media={
             "source": "elevenlabs_native_agent",
             "suppress_outbox": True,
-            "confirmation_verified": _is_explicit_confirmation(body.utterance),
+            "confirmation_verified": is_explicit_confirmation(body.utterance),
             "call_sid": body.call_sid,
         },
     )
@@ -188,16 +188,3 @@ def _require_native_agent_auth(
     supplied = authorization.removeprefix("Bearer ")
     if not hmac.compare_digest(supplied, expected_key):
         raise HTTPException(status_code=401, detail="invalid_native_agent_auth")
-
-
-def _is_explicit_confirmation(utterance: str) -> bool:
-    normalized = normalize_text(utterance)
-    return normalized in {
-        "si",
-        "si confirmo",
-        "confirmo",
-        "confirmalo",
-        "confirmar",
-        "de acuerdo confirmo",
-        "adelante confirmo",
-    }
