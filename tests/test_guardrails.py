@@ -39,3 +39,15 @@ def test_redaction_removes_pii_and_secrets() -> None:
     assert redacted["email"] == "[redacted_email]"
     assert redacted["phone"] == "[redacted_phone]"
     assert redacted["api_key"] == "[redacted]"
+
+
+def test_redaction_preserves_known_temporal_fields() -> None:
+    redacted = redact_payload(
+        {
+            "start": "2026-08-19T10:00:00+02:00",
+            "phone": "600111222",
+        }
+    )
+
+    assert redacted["start"] == "2026-08-19T10:00:00+02:00"
+    assert redacted["phone"] == "[redacted_phone]"

@@ -385,6 +385,22 @@ def test_rpa_date_resolves_relative_and_next_week_preferences(monkeypatch) -> No
     assert rpa_appointments._rpa_date("next_week:monday") == "27/07/2026"
 
 
+def test_rpa_find_infers_clinic_from_disjoint_open_weekday() -> None:
+    appointment = rpa_appointments._normalize_appointment(
+        {
+            "idCita": "test-1",
+            "date": "2026-08-19",
+            "time": "10:00",
+        },
+        {},
+    )
+
+    assert appointment["clinic"] == "santa_isabel"
+    assert appointment["address"] == (
+        "Avenida Santa Isabel numero 82, local, 50016 Zaragoza"
+    )
+
+
 def test_voice_transfer_disabled_does_not_call_twilio() -> None:
     handler = VoiceTransferHandler(
         Settings(OPENAI_API_KEY="", DATABASE_URL="", VOICE_TRANSFER_ENABLED=False)

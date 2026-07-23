@@ -636,6 +636,7 @@ def _normalize_appointment(
     date_iso = str(item.get("date") or "")
     time_value = str(item.get("time") or "")
     appointment_id = item.get("idCita") or item.get("appointment_id")
+    clinic = _appointment_clinic(arguments, date_iso)
     return {
         "appointment_id": str(appointment_id) if appointment_id is not None else None,
         "idCita": str(appointment_id) if appointment_id is not None else None,
@@ -647,9 +648,25 @@ def _normalize_appointment(
         "patient_phone": item.get("telefono") or arguments.get("patient_phone"),
         "duration_minutes": item.get("duracionMin"),
         "observations": item.get("observaciones"),
-        "clinic": arguments.get("clinic"),
-        "address": clinic_address(str(arguments.get("clinic") or "")),
+        "clinic": clinic,
+        "address": clinic_address(clinic or ""),
     }
+
+
+def _appointment_clinic(arguments: dict[str, Any], date_iso: str) -> str | None:
+    explicit = str(arguments.get("clinic") or "").strip()
+    if explicit in {Clinic.MADRE_VEDRUNA.value, Clinic.SANTA_ISABEL.value}:
+        return explicit
+    try:
+        weekday = datetime.fromisoformat(date_iso).weekday()
+    except ValueError:
+        return None
+    matches = [
+        clinic.value
+        for clinic in Clinic
+        if clinic_is_open_on_weekday(clinic.value, weekday)
+    ]
+    return matches[0] if len(matches) == 1 else None
 
 
 def _full_name(arguments: dict[str, Any], patient: dict[str, Any]) -> str:
