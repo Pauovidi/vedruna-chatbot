@@ -28,10 +28,20 @@ class Service(StrEnum):
 
 class InsuranceProvider(StrEnum):
     SANITAS = "sanitas"
-    GENERALI = "generali"
+    CATALANA_OCCIDENT = "catalana_occident"
     OTHER = "other"
     NONE = "none"
     UNKNOWN = "unknown"
+
+
+SHARED_APPOINTMENT_SERVICES = {
+    Service.PODOLOGIA.value,
+    Service.QUIROPODIA.value,
+    Service.ESTUDIO_BIOMECANICO.value,
+    Service.INFILTRACION.value,
+    Service.ECOGRAFIA.value,
+    Service.OTRO_PROBLEMA.value,
+}
 
 
 CLINICS: dict[str, dict[str, Any]] = {
@@ -44,7 +54,7 @@ CLINICS: dict[str, dict[str, Any]] = {
             "y viernes de 09:00 a 17:00"
         ),
         "open_weekdays": {1, 3, 4},
-        "allowed_services": {Service.PODOLOGIA.value},
+        "allowed_services": set(SHARED_APPOINTMENT_SERVICES),
         "requires_insurance": True,
     },
     Clinic.SANTA_ISABEL.value: {
@@ -53,13 +63,7 @@ CLINICS: dict[str, dict[str, Any]] = {
         "phone": "976582768",
         "hours": "lunes y miercoles de 09:30 a 13:30 y de 15:30 a 19:30",
         "open_weekdays": {0, 2},
-        "allowed_services": {
-            Service.QUIROPODIA.value,
-            Service.ESTUDIO_BIOMECANICO.value,
-            Service.INFILTRACION.value,
-            Service.ECOGRAFIA.value,
-            Service.OTRO_PROBLEMA.value,
-        },
+        "allowed_services": set(SHARED_APPOINTMENT_SERVICES),
         "requires_insurance": False,
     },
 }
@@ -143,10 +147,10 @@ def normalize_insurance(text: str) -> dict[str, str] | None:
             "insurance_type": "seguro",
             "insurance_provider": InsuranceProvider.SANITAS.value,
         }
-    if "generali" in normalized:
+    if any(term in normalized for term in ["catalana occident", "catalana", "occident"]):
         return {
             "insurance_type": "seguro",
-            "insurance_provider": InsuranceProvider.GENERALI.value,
+            "insurance_provider": InsuranceProvider.CATALANA_OCCIDENT.value,
         }
     if any(term in normalized for term in ["particular", "sin seguro"]):
         return {

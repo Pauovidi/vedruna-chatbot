@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import pytest
+
+from core.adapters.vedruna.domain_schema import service_allowed
 from tests.vedruna_helpers import make_vedruna_orchestrator, turn
 
 
@@ -18,7 +21,54 @@ def test_madre_vedruna_podologia_requires_insurance() -> None:
     result = turn(orchestrator, "quiero cita en Vedruna para podologia")
     assert result.reply_key == "vedruna_ask_insurance"
     assert "Sanitas" in result.reply_text
-    assert "Generali" in result.reply_text
+    assert "Catalana Occidente" in result.reply_text
+    assert "Generali" not in result.reply_text
+
+
+def test_madre_vedruna_accepts_catalana_occidente_but_not_generali() -> None:
+    orchestrator, _store = make_vedruna_orchestrator()
+    conversation_id = "v-catalana-occidente"
+
+    turn(
+        orchestrator,
+        "quiero cita en Madre Vedruna para ecografia",
+        conversation_id=conversation_id,
+    )
+    accepted = turn(
+        orchestrator,
+        "Catalana Occidente",
+        conversation_id=conversation_id,
+    )
+    assert accepted.reply_key == "vedruna_ask_first_name"
+
+    other_orchestrator, _store = make_vedruna_orchestrator()
+    turn(
+        other_orchestrator,
+        "quiero cita en Madre Vedruna para ecografia",
+        conversation_id="v-generali-rejected",
+    )
+    rejected = turn(
+        other_orchestrator,
+        "Generali",
+        conversation_id="v-generali-rejected",
+    )
+    assert rejected.reply_key == "vedruna_ask_insurance"
+
+
+@pytest.mark.parametrize(
+    "service",
+    [
+        "podologia",
+        "quiropodia",
+        "estudio_biomecanico",
+        "infiltracion",
+        "ecografia",
+        "otro_problema",
+    ],
+)
+def test_both_clinics_allow_the_same_services(service: str) -> None:
+    assert service_allowed("madre_vedruna", service)
+    assert service_allowed("santa_isabel", service)
 
 
 def test_santa_isabel_does_not_ask_insurance_for_quiropodia() -> None:

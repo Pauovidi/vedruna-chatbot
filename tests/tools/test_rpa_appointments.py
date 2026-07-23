@@ -313,7 +313,7 @@ def test_rpa_cancel_and_reschedule_send_idcita(monkeypatch) -> None:
     assert captured[1]["payload"]["type"] == "estudio"
 
 
-def test_rpa_mutua_mapping_sanitas_and_generali(monkeypatch) -> None:
+def test_rpa_mutua_mapping_sanitas_and_catalana_occident(monkeypatch) -> None:
     captured: list[dict[str, Any]] = []
 
     def fake_urlopen(req, timeout):
@@ -337,7 +337,7 @@ def test_rpa_mutua_mapping_sanitas_and_generali(monkeypatch) -> None:
     }
 
     client.create_appointment({**base, "insurance_provider": "sanitas"})
-    client.create_appointment({**base, "insurance_provider": "generali"})
+    client.create_appointment({**base, "insurance_provider": "catalana_occident"})
 
     assert captured[0]["idMutua"] == 1
     assert captured[1]["idMutua"] == 12

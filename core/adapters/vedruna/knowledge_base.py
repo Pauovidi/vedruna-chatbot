@@ -23,10 +23,18 @@ VEDRUNA_KNOWLEDGE_ENTRIES = [
         "id": "vedruna_insurance",
         "title": "Seguros",
         "content": (
-            "Madre Vedruna trabaja con Sanitas, Generali y particular. "
+            "Madre Vedruna trabaja con Sanitas, Catalana Occidente y particular. "
             "Santa Isabel trabaja solo particular."
         ),
-        "tags": ["seguro", "sanitas", "generali", "particular"],
+        "tags": ["seguro", "sanitas", "catalana occident", "occident", "particular"],
+    },
+    {
+        "id": "vedruna_services",
+        "title": "Servicios",
+        "content": (
+            "Madre Vedruna y Santa Isabel ofrecen los mismos servicios: quiropodia, "
+            "estudio biomecanico, infiltracion, ecografia y atencion de otros problemas."
+        ),
+        "tags": ["servicios", "quiropodia", "biomecanica", "infiltracion", "ecografia"],
     },
 ]
-

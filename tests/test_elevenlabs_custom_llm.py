@@ -255,7 +255,7 @@ def test_custom_llm_greeting_with_booking_request_starts_booking(monkeypatch) ->
     assert "Santa Isabel" in response.text
 
 
-def test_custom_llm_understands_madre_vedruna_service_confirmation(monkeypatch) -> None:
+def test_custom_llm_accepts_madre_vedruna_shared_service(monkeypatch) -> None:
     client = _client(monkeypatch)
     conversation_id = "conv-madre-confirmation"
 
@@ -264,11 +264,11 @@ def test_custom_llm_understands_madre_vedruna_service_confirmation(monkeypatch) 
         text="Quiero una cita en Madre Vedruna",
         conversation_id=conversation_id,
     )
-    assert "Es para una cita de podologia" in first.text
+    assert "ecografia" in first.text
 
     response = _request(
         client,
-        text="Si, y tengo Sanitas",
+        text="Ecografia, y tengo Sanitas",
         conversation_id=conversation_id,
     )
 
@@ -276,7 +276,7 @@ def test_custom_llm_understands_madre_vedruna_service_confirmation(monkeypatch) 
     assert "Para continuar, dime tu nombre" in response.text
 
 
-def test_custom_llm_understands_natural_service_confirmation(monkeypatch) -> None:
+def test_custom_llm_does_not_infer_service_from_short_confirmation(monkeypatch) -> None:
     client = _client(monkeypatch)
     conversation_id = "conv-madre-natural-confirmation"
 
@@ -292,8 +292,8 @@ def test_custom_llm_understands_natural_service_confirmation(monkeypatch) -> Non
     )
 
     assert response.status_code == 200
-    assert "Sanitas" in response.text
-    assert "Es para podologia" not in response.text
+    assert "ecografia" in response.text
+    assert "Sanitas" not in response.text
 
 
 def test_custom_llm_understands_natural_patient_name_and_last_names(monkeypatch) -> None:
@@ -302,7 +302,7 @@ def test_custom_llm_understands_natural_patient_name_and_last_names(monkeypatch)
 
     for text in [
         "Quiero una cita en Madre Vedruna",
-        "Si",
+        "Ecografia",
         "Sanitas",
     ]:
         _request(client, text=text, conversation_id=conversation_id)

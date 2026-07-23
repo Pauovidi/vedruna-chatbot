@@ -67,14 +67,17 @@ def _render_text(
     if reply_key == "vedruna_ask_clinic":
         return "Claro. Para que clinica quieres la cita: Madre Vedruna o Santa Isabel?"
     if reply_key == "vedruna_ask_service_madre":
-        return "En Madre Vedruna atendemos podologia. Es para una cita de podologia?"
+        return (
+            "En Madre Vedruna atendemos quiropodia, estudio biomecanico, infiltracion, "
+            "ecografia u otros problemas. Que necesitas?"
+        )
     if reply_key == "vedruna_ask_service_santa":
         return (
             "En Santa Isabel atendemos quiropodia, estudio biomecanico, infiltracion, "
             "ecografia u otro problema. Cual necesitas?"
         )
     if reply_key == "vedruna_ask_insurance":
-        return "Para Madre Vedruna, vienes por Sanitas, Generali o particular?"
+        return "Para Madre Vedruna, vienes por Sanitas, Catalana Occidente o particular?"
     if reply_key == "vedruna_ask_first_name":
         return "Perfecto. Para continuar, dime tu nombre."
     if reply_key == "vedruna_ask_last_names":
@@ -132,7 +135,7 @@ def _render_text(
     if reply_key == "vedruna_santa_isabel_particular_only":
         return (
             "Santa Isabel trabaja solo de forma particular. Si quieres usar Sanitas "
-            "o Generali, puedo mirar Madre Vedruna."
+            "o Catalana Occidente, puedo mirar Madre Vedruna."
         )
     if reply_key == "vedruna_faq_hours":
         return (
@@ -147,12 +150,12 @@ def _render_text(
         )
     if reply_key == "vedruna_faq_services":
         return (
-            "En Madre Vedruna puedo citar podologia. En Santa Isabel puedo ayudar con "
-            "quiropodia, estudio biomecanico, infiltracion, ecografia u otro problema."
+            "En ambas clinicas atendemos quiropodia, estudio biomecanico, infiltracion, "
+            "ecografia u otros problemas."
         )
     if reply_key == "vedruna_faq_insurance":
         return (
-            "En Madre Vedruna se trabaja con Sanitas, Generali y particular. "
+            "En Madre Vedruna se trabaja con Sanitas, Catalana Occidente y particular. "
             "En Santa Isabel se trabaja solo de forma particular."
         )
     if reply_key == "vedruna_human_handoff":

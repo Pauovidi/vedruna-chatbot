@@ -89,9 +89,9 @@ sends the agenda body `{nombre} {apellidos} {telefono} {motivo}` without a
 second prefix. For insurance:
 
 - Sanitas -> `mutua=true`, `idMutua=1`
-- Generali -> `mutua=true`, `idMutua=12`
+- Catalana Occidente -> `mutua=true`, `idMutua=12`
 
-TODO: confirm with clinic/RPA whether Generali maps to OCCIDENT id `12`.
+Catalana Occidente maps to OCCIDENT id `12`.
 
 Visible confirmation is allowed only if the normalized result has:
 

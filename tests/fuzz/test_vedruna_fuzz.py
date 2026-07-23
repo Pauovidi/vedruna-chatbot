@@ -10,7 +10,7 @@ from tests.vedruna_helpers import make_vedruna_orchestrator, turn
     [
         ("quiero ir a la otra clinica", "vedruna_ask_clinic"),
         ("mejor por la tarde", "vedruna_ask_clinic"),
-        ("no, era Generali", "vedruna_faq_insurance"),
+        ("no, era Catalana Occidente", "vedruna_faq_insurance"),
         ("era para Santa Isabel", "vedruna_ask_service_santa"),
         ("precio de quiropodia", "vedruna_price_ask_clinic"),
         ("con una persona", "vedruna_human_handoff"),

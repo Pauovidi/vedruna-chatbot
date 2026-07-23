@@ -663,8 +663,7 @@ def _rpa_service_type(service: str) -> str:
 def _mutua_id(provider: Any) -> int | None:
     if provider == "sanitas":
         return 1
-    if provider == "generali":
-        # TODO confirmar con clinica/RPA si Generali entra como OCCIDENT idMutua=12.
+    if provider == "catalana_occident":
         return 12
     return None
 

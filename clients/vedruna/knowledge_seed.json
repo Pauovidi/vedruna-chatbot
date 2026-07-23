@@ -15,13 +15,13 @@
     {
       "id": "vedruna_insurance",
       "title": "Seguros",
-      "content": "En Madre Vedruna se trabaja con Sanitas, Generali y particular. En Santa Isabel se trabaja solo de forma particular.",
-      "tags": ["seguros", "sanitas", "generali", "particular"]
+      "content": "En Madre Vedruna se trabaja con Sanitas, Catalana Occidente y particular. En Santa Isabel se trabaja solo de forma particular.",
+      "tags": ["seguros", "sanitas", "catalana occident", "occident", "particular"]
     },
     {
       "id": "vedruna_services",
       "title": "Servicios citables",
-      "content": "En Madre Vedruna el asistente puede citar podologia. En Santa Isabel puede ayudar con quiropodia, estudio biomecanico de la marcha, infiltracion u otro problema y tratamientos de ecografia.",
+      "content": "Madre Vedruna y Santa Isabel ofrecen los mismos servicios: quiropodia, estudio biomecanico de la marcha, infiltracion, ecografia y atencion de otros problemas.",
       "tags": ["servicios", "podologia", "quiropodia"]
     }
   ]

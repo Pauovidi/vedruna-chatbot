@@ -43,7 +43,7 @@ InboundNormalizer
 
 - Price questions never include amounts.
 - Santa Isabel does not ask for insurance.
-- Madre Vedruna asks Sanitas/Generali/particular.
+- Madre Vedruna asks Sanitas/Catalana Occidente/particular.
 - Runtime dry-run suppresses create/cancel/reschedule writes.
 - Voice transfers for human, prices, urgent requests and unsupported specialty.
 - WhatsApp urgent requests avoid diagnosis and recommend direct clinic contact for immediate care.
@@ -56,4 +56,3 @@ InboundNormalizer
 - `tests/golden/test_vedruna_voice_conversationrelay.py`
 - `tests/fuzz/test_vedruna_fuzz.py`
 - `tests/tools/test_rpa_appointments.py`
-

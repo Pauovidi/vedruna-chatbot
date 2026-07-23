@@ -4,8 +4,8 @@ Covered by automated tests:
 
 - Greeting includes both clinics and excludes the inherited voice-name errata.
 - Booking without clinic asks Madre Vedruna or Santa Isabel.
-- Madre Vedruna podologia asks insurance.
-- Santa Isabel quiropodia does not ask insurance.
+- Madre Vedruna asks insurance for any supported service.
+- Santa Isabel offers the same services and does not ask insurance.
 - Santa Isabel plus Sanitas explains particular-only rule.
 - Price query gives clinic phone and no amount.
 - Full WhatsApp booking reaches RPA availability and then suppresses real create in dry-run.

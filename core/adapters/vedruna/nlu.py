@@ -93,13 +93,6 @@ def interpret_vedruna_message(
 
     active_clinic = clinic or previous_slots.get("clinic")
     service = normalize_service(message.text, active_clinic)
-    if _confirms_madre_vedruna_default_service(
-        normalized,
-        active_clinic,
-        previous_slots,
-        context,
-    ):
-        service = "podologia"
     if service == "otro_problema" and previous_slots.get("service"):
         service = None
     if service:
@@ -246,7 +239,10 @@ def _intent(normalized: str, slots: dict[str, Any], context: dict[str, object]) 
         return "faq_location"
     if any(term in normalized for term in ["servicio", "que haceis", "que hacéis"]):
         return "faq_services"
-    if any(term in normalized for term in ["seguro", "sanitas", "generali", "particular"]):
+    if any(
+        term in normalized
+        for term in ["seguro", "sanitas", "catalana", "occident", "particular"]
+    ):
         if current_flow == "vedruna_appointment" or any(
             term in normalized for term in ["cita", "reservar", "quiero ir", "consulta"]
         ):
@@ -507,26 +503,6 @@ def _spanish_number(value: int) -> str:
 def _looks_like_consultation_reason(normalized: str, service: str | None) -> bool:
     del service
     return any(term in normalized for term in ["dolor", "molestia", "callo", "dureza"])
-
-
-def _confirms_madre_vedruna_default_service(
-    normalized: str,
-    clinic: object | None,
-    previous_slots: dict[str, Any],
-    context: dict[str, object],
-) -> bool:
-    """Resolve a short confirmation of the Madre Vedruna podology prompt."""
-    if clinic != "madre_vedruna" or previous_slots.get("service"):
-        return False
-    pending_fields = context.get("pending_fields")
-    if not isinstance(pending_fields, list) or "service" not in pending_fields:
-        return False
-    return bool(
-        re.match(
-            r"^(?:si|vale|correcto|exacto|asi es|eso es|claro|afirmativo)(?:$|[\s,.;:!?])",
-            normalized,
-        )
-    )
 
 
 def _short_reply(normalized: str) -> bool:

@@ -14,8 +14,8 @@ WhatsApp y voz comparten el mismo `client_id=vedruna` y el mismo pipeline centra
 
 ## Services
 
-- Madre Vedruna: el asistente solo cita `podologia`.
-- Santa Isabel: `quiropodia`, `estudio_biomecanico`, `infiltracion`, `ecografia`, `otro_problema`.
+- Ambas sedes: `podologia`, `quiropodia`, `estudio_biomecanico`, `infiltracion`,
+  `ecografia`, `otro_problema`.
 - `traumatologia` y `psicologia` no se citan desde el asistente.
 
 Duracion:
@@ -25,7 +25,7 @@ Duracion:
 
 ## Insurance
 
-- Madre Vedruna requiere `Sanitas`, `Generali` o `particular`.
+- Madre Vedruna requiere `Sanitas`, `Catalana Occidente` o `particular`.
 - Santa Isabel es solo particular; no se pregunta seguro.
 - No se pide numero de poliza ni tarjeta.
 
@@ -78,4 +78,3 @@ The core keeps generic state fields and the Vedruna adapter maps them as:
 - `vedruna_recall`: appointment lookup.
 
 `tool_state.last_offered_slots` stores the last RPA availability options so voice DTMF or "la primera" can map to a real `slot_id`.
-
